@@ -184,7 +184,7 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         if (!force && globalWp != null)
             getWindow().setBackgroundDrawable(globalWp);
         try {
-            File wp = new File(getFilesDir().getAbsolutePath() + "/wp");
+            File wp = new File(getFilesDir(),  "wp");
             if (wp.exists()) {
                 BitmapFactory.Options opts = new BitmapFactory.Options();
                 opts.inJustDecodeBounds = true;

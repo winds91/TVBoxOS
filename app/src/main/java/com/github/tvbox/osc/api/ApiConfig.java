@@ -172,7 +172,7 @@ public class ApiConfig {
                 defaultLiveObjString = defaultLiveObjString.replace("txt_m3u_url",liveApiConfigUrl);
                 parseLiveJson(liveApiUrl,defaultLiveObjString);
             }else {
-                File live_cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + MD5.encode(liveApiUrl));
+                File live_cache = new File(App.getInstance().getFilesDir(), MD5.encode(liveApiUrl));
                 if (useCache && live_cache.exists()) {
                     try {
                         parseLiveJson(liveApiUrl, live_cache);
@@ -234,7 +234,7 @@ public class ApiConfig {
             callback.error("-1");
             return;
         }
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + MD5.encode(apiUrl));
+        File cache = new File(App.getInstance().getFilesDir(), MD5.encode(apiUrl));
         if (useCache && cache.exists()) {
             try {
                 parseJson(apiUrl, cache);
@@ -299,7 +299,7 @@ public class ApiConfig {
         String[] urls = spider.split(";md5;");
         String jarUrl = urls[0];
         String md5 = urls.length > 1 ? urls[1].trim() : "";
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp.jar");
+        File cache = new File(App.getInstance().getFilesDir(), "csp.jar");
 
         if (!md5.isEmpty() || useCache) {
             if (cache.exists() && (useCache || MD5.getFileMd5(cache).equalsIgnoreCase(md5))) {

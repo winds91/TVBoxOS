@@ -166,8 +166,7 @@ public class RemoteServer extends NanoHTTPD {
                     try {
                         String f = fileName.substring(6);
                         String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        String file = root + "/" + f;
-                        File localFile = new File(file);
+                        File localFile = new File(root, f);
                         if (localFile.exists()) {
                             if (localFile.isFile()) {
                                 return NanoHTTPD.newChunkedResponse(NanoHTTPD.Response.Status.OK, "application/octet-stream", new FileInputStream(localFile));
@@ -175,7 +174,7 @@ public class RemoteServer extends NanoHTTPD {
                                 return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, fileList(root, f));
                             }
                         } else {
-                            return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "File " + file + " not found!");
+                            return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "File " + localFile.getAbsolutePath() + " not found!");
                         }
                     } catch (Throwable th) {
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, th.getMessage());
@@ -256,7 +255,7 @@ public class RemoteServer extends NanoHTTPD {
                                 String tmpFile = files.get(k);
                                 File tmp = new File(tmpFile);
                                 String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                                File file = new File(root + "/" + path + "/" + fn);
+                                File file = new File(root, path + "/" + fn);
                                 if (file.exists())
                                     file.delete();
                                 if (tmp.exists()) {
@@ -274,27 +273,27 @@ public class RemoteServer extends NanoHTTPD {
                     } else if (fileName.equals("/newFolder")) {
                         String path = params.get("path");
                         String name = params.get("name");
-                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        File file = new File(root + "/" + path + "/" + name);
+                        File root = Environment.getExternalStorageDirectory();
+                        File file = new File(root, path + "/" + name);
                         if (!file.exists()) {
                             file.mkdirs();
-                            File flag = new File(root + "/" + path + "/" + name + "/.tvbox_folder");
+                            File flag = new File(root, path + "/" + name + "/.tvbox_folder");
                             if (!flag.exists())
                                 flag.createNewFile();
                         }
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "OK");
                     } else if (fileName.equals("/delFolder")) {
                         String path = params.get("path");
-                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        File file = new File(root + "/" + path);
+                        File root = Environment.getExternalStorageDirectory();
+                        File file = new File(root, path);
                         if (file.exists()) {
                             FileUtils.recursiveDelete(file);
                         }
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "OK");
                     } else if (fileName.equals("/delFile")) {
                         String path = params.get("path");
-                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        File file = new File(root + "/" + path);
+                        File root = Environment.getExternalStorageDirectory();
+                        File file = new File(root, path);
                         if (file.exists()) {
                             file.delete();
                         }

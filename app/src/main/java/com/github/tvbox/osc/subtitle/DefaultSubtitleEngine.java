@@ -107,12 +107,11 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
 
                 String subtitlePath = subtitleLoadSuccessResult.subtitlePath;
                 if (subtitlePath.startsWith("http://") || subtitlePath.startsWith("https://")) {
-                    String subtitleFileCacheDir = App.getInstance().getCacheDir().getAbsolutePath() + "/zimu/";
-                    File cacheDir = new File(subtitleFileCacheDir);
+                    File cacheDir = new File(App.getInstance().getCacheDir(), "zimu/");
                     if (!cacheDir.exists()) {
                         cacheDir.mkdirs();
                     }
-                    String subtitleFile = subtitleFileCacheDir + subtitleLoadSuccessResult.fileName;
+                    String subtitleFile = cacheDir.getAbsolutePath() + subtitleLoadSuccessResult.fileName;
                     File cacheSubtitleFile = new File(subtitleFile);
                     boolean writeResult = FileUtils.writeSimple(subtitleLoadSuccessResult.content.getBytes(), cacheSubtitleFile);
                     if (writeResult && playSubtitleCacheKey != null) {

@@ -43,7 +43,7 @@ public class JarLoader {
     private boolean loadClassLoader(String jar, String key) {
         boolean success = false;
         try {
-            File cacheDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_csp");
+            File cacheDir = new File(App.getInstance().getCacheDir(), "catvod_csp");
             if (!cacheDir.exists())
                 cacheDir.mkdirs();
             DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, App.getInstance().getClassLoader());
@@ -85,7 +85,7 @@ public class JarLoader {
     private DexClassLoader loadJarInternal(String jar, String md5, String key) {
         if (classLoaders.contains(key))
             return classLoaders.get(key);
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + key + ".jar");
+        File cache = new File(App.getInstance().getFilesDir(), key + ".jar");
         if (!md5.isEmpty()) {
             if (cache.exists() && MD5.getFileMd5(cache).equalsIgnoreCase(md5)) {
                 loadClassLoader(cache.getAbsolutePath(), key);
