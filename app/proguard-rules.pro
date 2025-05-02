@@ -151,6 +151,9 @@
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
+# 保留 TypeToken 及其子类的所有成员
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
 # Prevent R8 from leaving Data object members always null
 -keepclassmembers,allowobfuscation class * {
   @com.google.gson.annotations.SerializedName <fields>;
@@ -295,3 +298,21 @@
 -dontwarn org.joda.time.format.DateTimeFormatter
 -dontwarn org.joda.time.format.ISODateTimeFormat
 -dontwarn org.kxml2.io.KXmlParser
+-dontwarn xyz.doikki.videoplayer.controller.BaseVideoController
+-dontwarn xyz.doikki.videoplayer.controller.ControlWrapper
+-dontwarn xyz.doikki.videoplayer.controller.IControlComponent
+-dontwarn xyz.doikki.videoplayer.controller.IGestureComponent
+-dontwarn xyz.doikki.videoplayer.exo.ExoMediaPlayerFactory
+-dontwarn xyz.doikki.videoplayer.exo.ExoMediaSourceHelper
+-dontwarn xyz.doikki.videoplayer.player.AbstractPlayer
+-dontwarn xyz.doikki.videoplayer.player.AndroidMediaPlayerFactory
+-dontwarn xyz.doikki.videoplayer.player.PlayerFactory
+-dontwarn xyz.doikki.videoplayer.player.ProgressManager
+-dontwarn xyz.doikki.videoplayer.player.VideoView
+-dontwarn xyz.doikki.videoplayer.player.VideoViewManager
+-dontwarn xyz.doikki.videoplayer.render.IRenderView
+-dontwarn xyz.doikki.videoplayer.render.MeasureHelper
+-dontwarn xyz.doikki.videoplayer.render.RenderViewFactory
+-dontwarn xyz.doikki.videoplayer.render.TextureRenderViewFactory
+-dontwarn xyz.doikki.videoplayer.util.CutoutUtil
+-dontwarn xyz.doikki.videoplayer.util.PlayerUtils
