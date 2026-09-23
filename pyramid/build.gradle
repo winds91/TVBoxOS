@@ -9,12 +9,17 @@ android {
     defaultConfig {
         minSdkVersion 19
         targetSdkVersion 28
+        ndk {
+            //abiFilters 'arm64-v8a'
+            //noinspection ChromeOsAbiSupport
+            abiFilters "armeabi-v7a"
+        }
         python {
             buildPython("D:/Programs/Python/Python38/python.exe")
             pip {
                 install "lxml"
                 install "ujson"
-                install "pyquery==2.0.2"
+                install "pyquery"
                 install "requests"
                 install "jsonpath"
                 install "cachetools"
@@ -24,30 +29,12 @@ android {
         }
     }
 
-    flavorDimensions "mode"
-    productFlavors {
-        python {
-            dimension "mode"
-            ndk {
-                abiFilters "armeabi-v7a", "arm64-v8a"
-            }
-        }
-        python32 {
-            dimension "mode"
-            ndk {
-                abiFilters "armeabi-v7a"
-            }
-        }
-        python64 {
-            dimension "mode"
-            ndk {
-                abiFilters "arm64-v8a"
-            }
-        }
-    }
-
     buildTypes {
-        debug {
+        all {
+            ndk {
+                //noinspection ChromeOsAbiSupport
+                abiFilters 'armeabi-v7a'
+            }
         }
         release {
             minifyEnabled false

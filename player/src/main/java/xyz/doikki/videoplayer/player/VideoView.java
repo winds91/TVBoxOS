@@ -289,20 +289,12 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
      * 开始准备播放（直接播放）
      */
     protected void startPrepare(boolean reset) {
-        startPrepare(reset, false);
-    }
-
-    protected void startPrepare(boolean reset, boolean rebindRenderView) {
         if (reset) {
             mMediaPlayer.reset();
             //重新设置option，media player reset之后，option会失效
             setOptions();
-            if (rebindRenderView && mRenderView != null) {
-                mRenderView.attachToPlayer(mMediaPlayer);
-            }
         }
         if (prepareDataSource()) {
-            mMediaPlayer.setStartPosition(mCurrentPosition);
             mMediaPlayer.prepareAsync();
             setPlayState(STATE_PREPARING);
             setPlayerState(isFullScreen() ? PLAYER_FULL_SCREEN : isTinyScreen() ? PLAYER_TINY_SCREEN : PLAYER_NORMAL);
@@ -370,6 +362,7 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
                     holder.addCallback(new SurfaceHolder.Callback() {
                         @Override
                         public void surfaceCreated(SurfaceHolder holder) {
+                            addDisplay();
                             if (mRenderView != null) {
                                 mRenderView.setScaleType(mCurrentScreenScaleType);
                                 mRenderView.setVideoSize(mVideoSize[0], mVideoSize[1]);
@@ -391,6 +384,15 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
                 }
             } else {
                 resumePlay();
+            }
+            if (mRenderView != null) {
+                // 强制请求布局（解决部分设备渲染问题）
+                mRenderView.getView().requestLayout();
+                mRenderView.getView().invalidate();
+            }
+            if (mRenderView != null && mRenderView.getView() != null) {
+                // 统一设置视图可见性
+                mRenderView.getView().setVisibility(View.VISIBLE);
             }
         }
     }
@@ -441,8 +443,6 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
             //切换转态
             setPlayState(STATE_IDLE);
         }
-        mVideoSize[0] = 0;
-        mVideoSize[1] = 0;
     }
 
     /**
@@ -491,18 +491,8 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         if (resetPosition) {
             mCurrentPosition = 0;
         }
-        if (mMediaPlayer == null) {
-            start();
-            return;
-        }
-        if (mMediaPlayer.keepRenderViewOnReset()) {
-            mMediaPlayer.reset();
-            setOptions();
-            mMediaPlayer.setOptions();
-            startPrepare(false);
-        } else {
-            startPrepare(true, true);
-        }
+        addDisplay();
+        startPrepare(true);
     }
 
     /**
@@ -579,13 +569,12 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
      */
     @Override
     public void onPrepared() {
-        // Custom players may not implement the common start-position contract.
-        if (mCurrentPosition > 0 && !mMediaPlayer.isStartPositionApplied()) {
-            mMediaPlayer.seekTo(mCurrentPosition);
-        }
         setPlayState(STATE_PREPARED);
         if (!isMute() && mAudioFocusHelper != null) {
             mAudioFocusHelper.requestFocus();
+        }
+        if (mCurrentPosition > 0) {
+            seekTo(mCurrentPosition);
         }
     }
 
@@ -691,8 +680,6 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         mAssetFileDescriptor = null;
         mUrl = url;
         mHeaders = headers;
-        mVideoSize[0] = 0;
-        mVideoSize[1] = 0;
     }
 
     /**
@@ -801,6 +788,9 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             uiOptions |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        }
         decorView.setSystemUiVisibility(uiOptions);
         getActivity().getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -844,6 +834,9 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         int uiOptions = decorView.getSystemUiVisibility();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             uiOptions &= ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            uiOptions &= ~View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
         }
         decorView.setSystemUiVisibility(uiOptions);
         getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);

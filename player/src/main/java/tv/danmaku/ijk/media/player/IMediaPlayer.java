@@ -199,17 +199,17 @@ public interface IMediaPlayer {
     boolean isLooping();
 
     /*--------------------
-     * Track information
+     * AndroidMediaPlayer: JELLY_BEAN
      */
     ITrackInfo[] getTrackInfo();
 
     /*--------------------
-     * Surface output
+     * AndroidMediaPlayer: ICE_CREAM_SANDWICH:
      */
     void setSurface(Surface surface);
 
     /*--------------------
-     * Media data source
+     * AndroidMediaPlayer: M:
      */
     void setDataSource(IMediaDataSource mediaDataSource);
 }

@@ -118,7 +118,6 @@ public class SearchSubtitleDialog extends BaseDialog {
         subtitleSearchEt.setText(wd);
         subtitleSearchEt.setSelection(wd.length());
         subtitleSearchEt.requestFocus();
-        search(wd);
     }
 
     public void search(String wd) {

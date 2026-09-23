@@ -6,22 +6,17 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.os.Environment;
-import android.text.TextUtils;
 import android.util.Base64;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
-import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.event.ServerEvent;
-import com.github.tvbox.osc.receiver.PushReceiver;
 import com.github.tvbox.osc.util.FileUtils;
-import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.Proxy;
 import com.google.gson.JsonArray;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import org.greenrobot.eventbus.EventBus;
@@ -85,12 +80,10 @@ public class RemoteServer extends NanoHTTPD {
         getRequestList.add(new RawRequestProcess(this.mContext, "/jquery.js", R.raw.jquery, "application/x-javascript"));
         getRequestList.add(new RawRequestProcess(this.mContext, "/script.js", R.raw.script, "application/x-javascript"));
         getRequestList.add(new RawRequestProcess(this.mContext, "/favicon.ico", R.drawable.app_icon, "image/x-icon"));
-        getRequestList.add(new CacheRequestProcess());
     }
 
     private void addPostRequestProcess() {
         postRequestList.add(new InputRequestProcess(this));
-        postRequestList.add(new CacheRequestProcess());
     }
 
     @Override
@@ -108,10 +101,6 @@ public class RemoteServer extends NanoHTTPD {
 
     private Response getProxy(Object[] rs){
         try {
-            if (rs == null || rs.length < 3) {
-                LOG.e("echo-proxy error: empty proxy result");
-                return NanoHTTPD.newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "500");
-            }
             if (rs[0] instanceof NanoHTTPD.Response) return (NanoHTTPD.Response) rs[0];
             int code = (int) rs[0];
             String mime = (String) rs[1];
@@ -133,7 +122,6 @@ public class RemoteServer extends NanoHTTPD {
             }
             return response;
         } catch (Throwable th) {
-            LOG.e("echo-proxy error: " + th.getMessage());
             return NanoHTTPD.newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "500");
         }
     }
@@ -147,20 +135,27 @@ public class RemoteServer extends NanoHTTPD {
                 fileName = fileName.substring(0, fileName.indexOf('?'));
             }
             if (session.getMethod() == Method.GET) {
-                if (isProxyRequest(fileName, session.getParms())) {
-                    return handleProxy(session);
-                }
                 for (RequestProcess process : getRequestList) {
                     if (process.isRequest(session, fileName)) {
                         return process.doResponse(session, fileName, session.getParms(), null);
                     }
                 }
-                if (fileName.startsWith("/file/")) {
+                if (fileName.equals("/proxy")) {
+                    Map<String, String> params = session.getParms();
+                    params.putAll(session.getHeaders());
+                    if (params.containsKey("do")) {
+                        Object[] rs = ApiConfig.get().proxyLocal(params);
+                        return getProxy(rs);
+                    }
+                    if (params.containsKey("go")) {
+                        Object[] rs = Proxy.proxy(params);
+                        return getProxy(rs);
+                    }
+                } else if (fileName.startsWith("/file/")) {
                     try {
                         String f = fileName.substring(6);
                         String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        String file = root + "/" + f;
-                        File localFile = new File(file);
+                        File localFile = new File(root, f);
                         if (localFile.exists()) {
                             if (localFile.isFile()) {
                                 return NanoHTTPD.newChunkedResponse(NanoHTTPD.Response.Status.OK, "application/octet-stream", new FileInputStream(localFile));
@@ -168,7 +163,7 @@ public class RemoteServer extends NanoHTTPD {
                                 return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, fileList(root, f));
                             }
                         } else {
-                            return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "File " + file + " not found!");
+                            return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "File " + localFile.getAbsolutePath() + " not found!");
                         }
                     } catch (Throwable th) {
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, th.getMessage());
@@ -193,15 +188,11 @@ public class RemoteServer extends NanoHTTPD {
                     } else {
                         url = URLDecoder.decode(url);
                     }
-                    PushReceiver.send(mContext, url);
+                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PUSH_URL, url));
                     return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "ok");    
-                } else if (fileName.equals("/action")) {
-                    return handleAction(session.getParms());
-                } else if (fileName.equals("/media")) {
-                    return handleMedia();
                 }  else if (fileName.startsWith("/proxyM3u8")) {
-//                    com.github.tvbox.osc.util.LOG.i("echo-proxyM3u8 length:" + (m3u8Content == null ? 0 : m3u8Content.length()));
-                    return NanoHTTPD.newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", m3u8Content == null ? "" : m3u8Content);
+//                    com.github.tvbox.osc.util.LOG.i("echo-m3u8:"+m3u8Content);
+                    return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, m3u8Content);
                 }
                  else if (fileName.startsWith("/dash/")) {
                     String dashData = App.getInstance().getDashData();
@@ -253,7 +244,7 @@ public class RemoteServer extends NanoHTTPD {
                                 String tmpFile = files.get(k);
                                 File tmp = new File(tmpFile);
                                 String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                                File file = new File(root + "/" + path + "/" + fn);
+                                File file = new File(root, path + "/" + fn);
                                 if (file.exists())
                                     file.delete();
                                 if (tmp.exists()) {
@@ -271,27 +262,27 @@ public class RemoteServer extends NanoHTTPD {
                     } else if (fileName.equals("/newFolder")) {
                         String path = params.get("path");
                         String name = params.get("name");
-                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        File file = new File(root + "/" + path + "/" + name);
+                        File root = Environment.getExternalStorageDirectory();
+                        File file = new File(root, path + "/" + name);
                         if (!file.exists()) {
                             file.mkdirs();
-                            File flag = new File(root + "/" + path + "/" + name + "/.tvbox_folder");
+                            File flag = new File(root, path + "/" + name + "/.tvbox_folder");
                             if (!flag.exists())
                                 flag.createNewFile();
                         }
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "OK");
                     } else if (fileName.equals("/delFolder")) {
                         String path = params.get("path");
-                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        File file = new File(root + "/" + path);
+                        File root = Environment.getExternalStorageDirectory();
+                        File file = new File(root, path);
                         if (file.exists()) {
                             FileUtils.recursiveDelete(file);
                         }
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "OK");
                     } else if (fileName.equals("/delFile")) {
                         String path = params.get("path");
-                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-                        File file = new File(root + "/" + path);
+                        File root = Environment.getExternalStorageDirectory();
+                        File file = new File(root, path);
                         if (file.exists()) {
                             file.delete();
                         }
@@ -304,116 +295,6 @@ public class RemoteServer extends NanoHTTPD {
         }
         //default page: index.html
         return getRequestList.get(0).doResponse(session, "", null, null);
-    }
-
-    private boolean isProxyRequest(String fileName, Map<String, String> params) {
-        if (params == null) return false;
-        if (!params.containsKey("do") && !params.containsKey("go")) return false;
-        return fileName.equals("/proxy") || fileName.equals("/");
-    }
-
-    private Response handleProxy(IHTTPSession session) {
-        Map<String, String> params = session.getParms();
-        params.putAll(session.getHeaders());
-        if (params.containsKey("do")) {
-            boolean isDanmuProxy = "danmu".equals(params.get("do"));
-            if (isDanmuProxy) normalizeDanmuParams(params);
-            if (isDanmuProxy) LOG.i("echo-proxy-danmu params: " + params.toString());
-            Object[] rs = ApiConfig.get().proxyLocal(params);
-            return getProxy(rs);
-        }
-        if (params.containsKey("go")) {
-            Object[] rs = Proxy.proxy(params);
-            return getProxy(rs);
-        }
-        return getProxy(null);
-    }
-
-    private Response handleAction(Map<String, String> params) {
-        if (params == null) return createPlainTextResponse(Response.Status.OK, "ok");
-        String action = params.get("do");
-        if ("refresh".equals(action)) {
-            handleRefreshAction(params);
-        }
-        return createPlainTextResponse(Response.Status.OK, "ok");
-    }
-
-    private void handleRefreshAction(Map<String, String> params) {
-        String type = params.get("type");
-        if ("danmaku".equals(type)) {
-            String path = params.get("path");
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_DANMU_REFRESH, path == null ? "" : path));
-        }
-    }
-
-    private Response handleMedia() {
-        try {
-            android.app.Activity activity = App.getInstance().getCurrentActivity();
-            if (activity == null) return createJSONResponse(Response.Status.OK, "{}");
-            final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-            final com.google.gson.JsonObject[] result = new com.google.gson.JsonObject[1];
-            result[0] = new com.google.gson.JsonObject();
-            final android.app.Activity act = activity;
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        if (act instanceof com.github.tvbox.osc.ui.activity.DetailActivity) {
-                            com.github.tvbox.osc.ui.activity.DetailActivity detail = (com.github.tvbox.osc.ui.activity.DetailActivity) act;
-                            com.github.tvbox.osc.ui.fragment.PlayFragment playFragment = detail.getPlayFragment();
-                            if (playFragment != null) result[0] = playFragment.getMediaInfo();
-                        }
-                    } catch (Throwable th) {
-                        LOG.e("echo-media handleMedia error: " + th.getMessage());
-                    } finally {
-                        latch.countDown();
-                    }
-                }
-            });
-            latch.await(2, java.util.concurrent.TimeUnit.SECONDS);
-            return createJSONResponse(Response.Status.OK, result[0].toString());
-        } catch (Throwable th) {
-            LOG.e("echo-media error: " + th.getMessage());
-            return createJSONResponse(Response.Status.OK, "{}");
-        }
-    }
-
-    private void normalizeDanmuParams(Map<String, String> params) {
-        try {
-            VodInfo vodInfo = App.getInstance().getVodInfo();
-            if (vodInfo == null) return;
-            if (!TextUtils.isEmpty(vodInfo.name)) params.put("vodName", vodInfo.name);
-            if (!isNumeric(params.get("vodIndex"))) {
-                String episode = getCurrentEpisodeIndex(vodInfo);
-                if (!TextUtils.isEmpty(episode)) params.put("vodIndex", episode);
-            }
-        } catch (Throwable th) {
-            LOG.e("echo-proxy-danmu normalize error: " + th.getMessage());
-        }
-    }
-
-    private String getCurrentEpisodeIndex(VodInfo vodInfo) {
-        if (vodInfo.seriesMap != null && !TextUtils.isEmpty(vodInfo.playFlag)) {
-            java.util.List<VodInfo.VodSeries> series = vodInfo.seriesMap.get(vodInfo.playFlag);
-            if (series != null && vodInfo.playIndex >= 0 && vodInfo.playIndex < series.size()) {
-                VodInfo.VodSeries current = series.get(vodInfo.playIndex);
-                if (current != null && !TextUtils.isEmpty(current.name)) {
-                    String number = extractNumber(current.name);
-                    return TextUtils.isEmpty(number) ? current.name : number;
-                }
-            }
-        }
-        return String.valueOf(Math.max(0, vodInfo.playIndex) + 1);
-    }
-
-    private boolean isNumeric(String text) {
-        return !TextUtils.isEmpty(text) && text.matches("\\d+");
-    }
-
-    private String extractNumber(String text) {
-        if (TextUtils.isEmpty(text)) return "";
-        Matcher matcher = getPattern("\\d+").matcher(text);
-        return matcher.find() ? matcher.group() : "";
     }
 
     public void setDataReceiver(DataReceiver receiver) {

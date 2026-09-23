@@ -28,19 +28,8 @@ public class DefaultConfig {
 
     public static List<MovieSort.SortData> adjustSort(String sourceKey, List<MovieSort.SortData> list, boolean withMy) {
         List<MovieSort.SortData> data = new ArrayList<>();
-        if (sourceKey != null && list != null) {
+        if (sourceKey != null) {
             SourceBean sb = ApiConfig.get().getSource(sourceKey);
-            if (sb == null || sb.getCategories() == null) {
-                for (MovieSort.SortData sortData : list) {
-                    if (sortData.filters == null)
-                        sortData.filters = new ArrayList<>();
-                    data.add(sortData);
-                }
-                if (withMy)
-                    data.add(0, new MovieSort.SortData("my0", "主页"));
-                Collections.sort(data);
-                return data;
-            }
             ArrayList<String> categories = sb.getCategories();
             if (!categories.isEmpty()) {
                 for (String cate : categories) {
@@ -119,8 +108,8 @@ public class DefaultConfig {
     }
 
     private static final Pattern snifferMatch = Pattern.compile(
-            "http((?!http).){12,}?\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg|m4a|mp3|aac|mpd)\\?.*|" +
-            "http((?!http).){12,}\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg|m4a|mp3|aac|mpd)|" +
+            "http((?!http).){12,}?\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg|m4a)\\?.*|" +
+            "http((?!http).){12,}\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg|m4a)|" +
             "http((?!http).)*?video/tos*|" +
             "http((?!http).){20,}?/m3u8\\?pt=m3u8.*|" +
             "http((?!http).)*?default\\.ixigua\\.com/.*|" +

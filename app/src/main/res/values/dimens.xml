@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="ts_10">10mm</dimen>
-    <dimen name="ts_14">14mm</dimen>
     <dimen name="ts_16">16mm</dimen>
-    <dimen name="ts_18">18mm</dimen>
-    <dimen name="ts_19">19mm</dimen>
     <dimen name="ts_20">20mm</dimen>
     <dimen name="ts_22">22mm</dimen>
     <dimen name="ts_24">24mm</dimen>
@@ -21,7 +18,6 @@
     <dimen name="radius_5">5mm</dimen>
     <dimen name="radius_10">8mm</dimen>
     <dimen name="radius_20">20mm</dimen>
-    <dimen name="preview_player_radius">14mm</dimen>
 
     <dimen name="vs_4_">-4mm</dimen>
     <dimen name="vs_20_">-20mm</dimen>
@@ -39,7 +35,6 @@
     <dimen name="vs_8">8mm</dimen>
     <dimen name="vs_10">10mm</dimen>
     <dimen name="vs_12">12mm</dimen>
-    <dimen name="vs_14">14mm</dimen>
     <dimen name="vs_15">15mm</dimen>
     <dimen name="vs_20">20mm</dimen>
     <dimen name="vs_24">24mm</dimen>

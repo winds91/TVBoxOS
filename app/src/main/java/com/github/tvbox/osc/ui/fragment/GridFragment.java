@@ -3,18 +3,13 @@ package com.github.tvbox.osc.ui.fragment;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.animation.BounceInterpolator;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
@@ -23,6 +18,7 @@ import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.MovieSort;
+import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
@@ -42,7 +38,6 @@ import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Stack;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -67,16 +62,8 @@ public class GridFragment extends BaseLazyFragment {
     private int page = 1;
     private int maxPage = 1;
     private boolean isLoad = false;
-    private boolean isRequesting = false;
-    private boolean hasActionItems = false;
     private boolean isTop = true;
     private View focusedView = null;
-    private float pullRefreshStartX;
-    private float pullRefreshStartY;
-    private boolean pullRefreshStartAtTop = false;
-    private boolean pullRefreshReady = false;
-    private int pullRefreshThreshold = 0;
-    private View loadSirView = null;
 
     private static class GridInfo{
         public String sortID="";
@@ -85,7 +72,6 @@ public class GridFragment extends BaseLazyFragment {
         public int page = 1;
         public int maxPage = 1;
         public boolean isLoad = false;
-        public boolean hasActionItems = false;
         public View focusedView= null;
     }
     Stack<GridInfo> mGrids = new Stack<GridInfo>(); //ui栈
@@ -102,15 +88,6 @@ public class GridFragment extends BaseLazyFragment {
     @Override
     protected int getLayoutResID() {
         return R.layout.fragment_grid;
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        TvRecyclerView gridView = view.findViewById(R.id.mGridView);
-        if (gridView != null && gridView.getLayoutManager() == null) {
-            gridView.setLayoutManager(new V7LinearLayoutManager(mContext, 1, false));
-        }
     }
 
     @Override
@@ -148,7 +125,6 @@ public class GridFragment extends BaseLazyFragment {
         info.page = this.page;
         info.maxPage = this.maxPage;
         info.isLoad = this.isLoad;
-        info.hasActionItems = this.hasActionItems;
         info.focusedView = this.focusedView;
         this.mGrids.push(info);
     }
@@ -164,7 +140,6 @@ public class GridFragment extends BaseLazyFragment {
         this.page = info.page;
         this.maxPage = info.maxPage;
         this.isLoad = info.isLoad;
-        this.hasActionItems = info.hasActionItems;
         this.focusedView = info.focusedView;
         this.mGridView.setVisibility(View.VISIBLE);
 //        if(this.focusedView != null){ this.focusedView.requestFocus(); }
@@ -199,6 +174,7 @@ public class GridFragment extends BaseLazyFragment {
 
     private void initView() {
         this.createView();
+        mGridView.setAdapter(gridAdapter);
         if(isFolederMode()){
             mGridView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 1, false));
         }else{
@@ -212,7 +188,6 @@ public class GridFragment extends BaseLazyFragment {
                 mGridView.setLayoutManager(new V7GridLayoutManager(mContext, spanCount));
             }
         }
-        mGridView.setAdapter(gridAdapter);
 
         gridAdapter.setOnLoadMoreListener(new BaseQuickAdapter.RequestLoadMoreListener() {
             @Override
@@ -251,10 +226,6 @@ public class GridFragment extends BaseLazyFragment {
                 FastClickCheckUtil.check(view);
                 Movie.Video video = gridAdapter.getData().get(position);
                 if (video != null) {
-                    if (video.action != null) {
-                        sourceViewModel.action(video.sourceKey, video.action);
-                        return;
-                    }
                     Bundle bundle = new Bundle();
                     bundle.putString("id", video.id);
                     bundle.putString("sourceKey", video.sourceKey);
@@ -268,13 +239,13 @@ public class GridFragment extends BaseLazyFragment {
                         }
                     }
                     else{
-                        if (video.id != null && video.id.startsWith("msearch:")) {
-                            if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, true) && enableFastSearch()) {
+                        if(video.id == null || video.id.isEmpty() || video.id.startsWith("msearch:")){
+                            if(Hawk.get(HawkConfig.FAST_SEARCH_MODE, false) && enableFastSearch()){
                                 jumpActivity(FastSearchActivity.class, bundle);
-                            } else {
+                            }else {
                                 jumpActivity(SearchActivity.class, bundle);
                             }
-                        } else {
+                        }else {
                             bundle.putString("picture", video.pic);
                             jumpActivity(DetailActivity.class, bundle);
                         }
@@ -293,95 +264,13 @@ public class GridFragment extends BaseLazyFragment {
                     bundle.putString("id", video.id);
                     bundle.putString("sourceKey", video.sourceKey);
                     bundle.putString("title", video.name);
-                    if (video.id != null && video.id.startsWith("msearch:")) {
-                        bundle.putString("picture", video.pic);
-                        jumpActivity(DetailActivity.class, bundle);
-                    } else {
-                        jumpActivity(FastSearchActivity.class, bundle);
-                    }
+                    jumpActivity(FastSearchActivity.class, bundle);
                 }
                 return true;
             }
         });
         gridAdapter.setLoadMoreView(new LoadMoreView());
         setLoadSir2(mGridView);
-        initPullRefresh();
-    }
-
-    private void initPullRefresh() {
-        pullRefreshThreshold = ViewConfiguration.get(mContext).getScaledTouchSlop() * 6;
-        mGridView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
-            @Override
-            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent event) {
-                return handlePullRefreshTouch(rv, event);
-            }
-
-            @Override
-            public void onTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent event) {
-            }
-
-            @Override
-            public void onRequestDisallowInterceptTouchEvent(boolean disallowIntercept) {
-            }
-        });
-        loadSirView = (View) mGridView.getParent();
-        if (loadSirView != null) {
-            loadSirView.setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    return handlePullRefreshTouch(v, event);
-                }
-            });
-        }
-    }
-
-    private void bindPullRefreshTouch(View view) {
-        if (view == null || view == mGridView) return;
-        view.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return handlePullRefreshTouch(v, event);
-            }
-        });
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                bindPullRefreshTouch(group.getChildAt(i));
-            }
-        }
-    }
-
-    private boolean handlePullRefreshTouch(View view, MotionEvent event) {
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                pullRefreshStartX = event.getX();
-                pullRefreshStartY = event.getY();
-                pullRefreshStartAtTop = !view.canScrollVertically(-1);
-                pullRefreshReady = false;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                float diffX = Math.abs(event.getX() - pullRefreshStartX);
-                float diffY = event.getY() - pullRefreshStartY;
-                pullRefreshReady = pullRefreshStartAtTop && diffY > pullRefreshThreshold && diffY > diffX;
-                break;
-            case MotionEvent.ACTION_UP:
-                if (pullRefreshReady) {
-                    pullRefreshReady = false;
-                    forceRefresh();
-                    return true;
-                }
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                pullRefreshReady = false;
-                break;
-        }
-        return false;
-    }
-
-    @Override
-    protected void showEmpty() {
-        super.showEmpty();
-        bindPullRefreshTouch(loadSirView);
     }
 
     private void initViewModel() {
@@ -390,15 +279,12 @@ public class GridFragment extends BaseLazyFragment {
         sourceViewModel.listResult.observe(this, new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
-                isRequesting = false;
                 if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
                     if (page == 1) {
                         showSuccess();
                         isLoad = true;
-                        hasActionItems = hasActionVideo(absXml.movie.videoList);
                         gridAdapter.setNewData(absXml.movie.videoList);
                     } else {
-                        hasActionItems = hasActionItems || hasActionVideo(absXml.movie.videoList);
                         gridAdapter.addData(absXml.movie.videoList);
                     }
                     page++;
@@ -413,7 +299,6 @@ public class GridFragment extends BaseLazyFragment {
                     }
                 } else {
                     if (page == 1) {
-                        hasActionItems = false;
                         showEmpty();
                     } else if(page > 2){// 只有一页数据时不提示
                         Toast.makeText(getContext(), "没有更多了", Toast.LENGTH_SHORT).show();
@@ -423,43 +308,18 @@ public class GridFragment extends BaseLazyFragment {
                 }
             }
         });
-        sourceViewModel.actionResult.observe(this, new Observer<JSONObject>() {
-            @Override
-            public void onChanged(JSONObject jsonObject) {
-                if (jsonObject == null) return;
-                String msg = jsonObject.optString("msg");
-                if (!msg.isEmpty()) {
-                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
-                    forceRefresh();
-                }
-            }
-        });
     }
 
     public boolean isLoad() {
         return isLoad || !mGrids.empty(); //如果有缓存页的话也可以认为是加载了数据的
     }
 
-    public boolean shouldReloadOnSelect() {
-        return !isRequesting && mGrids.empty() && (hasActionItems || !isLoad);
-    }
-
     private void initData() {
         showLoading();
-        isRequesting = true;
         isLoad = false;
-        hasActionItems = false;
         scrollTop();
         toggleFilterColor();
         sourceViewModel.getList(sortData, page);
-    }
-
-    private boolean hasActionVideo(List<Movie.Video> videos) {
-        if (videos == null) return false;
-        for (Movie.Video video : videos) {
-            if (video != null && video.action != null) return true;
-        }
-        return false;
     }
 
     private void toggleFilterColor() {
@@ -475,7 +335,6 @@ public class GridFragment extends BaseLazyFragment {
 
     public void scrollTop() {
         isTop = true;
-        if (mGridView == null) return;
         mGridView.scrollToPosition(0);
     }
 
@@ -552,8 +411,6 @@ public class GridFragment extends BaseLazyFragment {
     }
 
     public void forceRefresh() {
-        if (mGridView == null || gridAdapter == null || sourceViewModel == null) return;
-        if (isRequesting) return;
         page = 1;
         initData();
     }

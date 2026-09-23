@@ -6,14 +6,6 @@ function api() {
     doAction('api', { url: $('#diy_api_url').val() });
 }
 
-function liveApi() {
-    doAction('liveApi', { url: $('#diy_live_api_url').val() });
-}
-
-function danmuApi() {
-    doAction('danmuApi', { url: $('#diy_danmu_api_url').val() });
-}
-
 function push() {
     doAction('push', { url: $('#push_url').val() });
 }
@@ -89,14 +81,12 @@ function selectFile(path, canDel) {
     $("#fileInfoDialog").show();
 }
 
-function fileToApi(type, live) {
-    var url;
+function fileToApi(type) {
     if (type === 1) {
-        url = "clan://localhost/" + current_file;
+        doAction('api', { url: "clan://localhost/" + current_file });
     } else {
-        url = current_remote + current_file;
+        doAction('api', { url: current_remote + current_file });
     }
-    doAction(live ? 'liveApi' : 'api', { url: url });
 }
 
 function hideFileInfo() {

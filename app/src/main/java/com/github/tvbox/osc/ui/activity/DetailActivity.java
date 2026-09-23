@@ -3,12 +3,9 @@ package com.github.tvbox.osc.ui.activity;
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.TextUtils;
@@ -16,7 +13,6 @@ import android.util.DisplayMetrics;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -42,6 +38,7 @@ import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.cache.RoomDataManger;
 import com.github.tvbox.osc.event.RefreshEvent;
+import com.github.tvbox.osc.picasso.RoundTransformation;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
 import com.github.tvbox.osc.ui.adapter.SeriesFlagAdapter;
 import com.github.tvbox.osc.ui.dialog.DescDialog;
@@ -60,24 +57,23 @@ import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
+import com.squareup.picasso.Picasso;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import me.jessyan.autosize.utils.AutoSizeUtils;
 
@@ -90,18 +86,11 @@ import android.graphics.Paint;
  */
 
 public class DetailActivity extends BaseActivity {
-    private static final String STATE_FULL_WINDOWS = "detail_full_windows";
-    private static final String DETAIL_FALLBACK_SEARCH_TAG = "detail_fallback_search";
-    public static final String EXTRA_DETAIL_FALLBACK_CANDIDATES = "detailFallbackCandidates";
-    private static final int DETAIL_FALLBACK_MAX_SEARCH = 20;
-    private static final long DETAIL_FALLBACK_SEARCH_TIMEOUT_MS = 8000L;
-    private static final long DETAIL_FALLBACK_DETAIL_TIMEOUT_MS = 6000L;
     private LinearLayout llLayout;
     private FragmentContainerView llPlayerFragmentContainer;
     private View llPlayerFragmentContainerBlock;
     private View llPlayerPlace;
     private PlayFragment playFragment = null;
-    private View thumbContainer;
     private ImageView ivThumb;
     private TextView tvName;
     private TextView tvYear;
@@ -118,10 +107,8 @@ public class DetailActivity extends BaseActivity {
     private TextView tvDesc;
     private TextView tvSeriesSort;
     private TextView tvQuickSearch;
-    private TextView tvChangeSource;
     private TextView tvCollect;
     private TvRecyclerView mGridViewFlag;
-    private TvRecyclerView mGridViewQuality;
     private TvRecyclerView mGridView;
     private TvRecyclerView mSeriesGroupView;
     private LinearLayout mEmptyPlayList;
@@ -130,38 +117,24 @@ public class DetailActivity extends BaseActivity {
     private Movie.Video mVideo;
     private VodInfo vodInfo;
     private SeriesFlagAdapter seriesFlagAdapter;
-    private BaseQuickAdapter<String, BaseViewHolder> qualityAdapter;
     private BaseQuickAdapter<String, BaseViewHolder> seriesGroupAdapter;
     private SeriesAdapter seriesAdapter;
     public String vodId;
     public String sourceKey;
     public String firstsourceKey;
-    private boolean fromCollect;
     boolean seriesSelect = false;
     private View seriesFlagFocus = null;
     private boolean isReverse;
     private String preFlag="";
-    private VodInfo.VodSeries routeSwitchSeries;
     private boolean firstReverse;
     private V7GridLayoutManager mGridViewLayoutMgr = null;
     private HashMap<String, String> mCheckSources = null;
     private final ArrayList<String> seriesGroupOptions = new ArrayList<>();
-    private final ArrayList<String> qualityOptions = new ArrayList<>();
     private View currentSeriesGroupView;
-    private int selectedSeriesGroupPosition;
     private int GroupCount;
-    private int qualityPosition;
     boolean showPreview = Hawk.get(HawkConfig.SHOW_PREVIEW, true);; // true 开启 false 关闭
 
     private LinearSmoothScroller smoothScroller;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        if (savedInstanceState != null) {
-            fullWindows = savedInstanceState.getBoolean(STATE_FULL_WINDOWS, false);
-        }
-        super.onCreate(savedInstanceState);
-    }
 
     @Override
     protected int getLayoutResID() {
@@ -181,10 +154,9 @@ public class DetailActivity extends BaseActivity {
         llPlayerPlace = findViewById(R.id.previewPlayerPlace);
         llPlayerFragmentContainer = findViewById(R.id.previewPlayer);
         llPlayerFragmentContainerBlock = findViewById(R.id.previewPlayerBlock);
-        applyPreviewRoundCorners();
-        thumbContainer = findViewById(R.id.thumbContainer);
         ivThumb = findViewById(R.id.ivThumb);
-        applyThumbPreviewStyle();
+        llPlayerPlace.setVisibility(showPreview ? View.VISIBLE : View.GONE);
+        ivThumb.setVisibility(!showPreview ? View.VISIBLE : View.GONE);
         tvName = findViewById(R.id.tvName);
         tvYear = findViewById(R.id.tvYear);
         tvSite = findViewById(R.id.tvSite);
@@ -201,7 +173,6 @@ public class DetailActivity extends BaseActivity {
         tvSeriesSort = findViewById(R.id.mSeriesSortTv);
         tvCollect = findViewById(R.id.tvCollect);
         tvQuickSearch = findViewById(R.id.tvQuickSearch);
-        tvChangeSource = findViewById(R.id.tvChangeSource);
         mEmptyPlayList = findViewById(R.id.mEmptyPlaylist);
         mGridView = findViewById(R.id.mGridView);
         mGridView.setHasFixedSize(false);
@@ -227,46 +198,13 @@ public class DetailActivity extends BaseActivity {
         mGridViewFlag.setLayoutManager(new V7LinearLayoutManager(this.mContext, 0, false));
         seriesFlagAdapter = new SeriesFlagAdapter();
         mGridViewFlag.setAdapter(seriesFlagAdapter);
-        mGridViewQuality = findViewById(R.id.mGridViewQuality);
-        mGridViewQuality.setHasFixedSize(true);
-        mGridViewQuality.setLayoutManager(new V7LinearLayoutManager(this.mContext, 0, false));
-        qualityAdapter = new BaseQuickAdapter<String, BaseViewHolder>(R.layout.item_series_flag, qualityOptions) {
-            @Override
-            protected void convert(BaseViewHolder helper, String item) {
-                helper.setText(R.id.tvSeriesFlag, item);
-                helper.getView(R.id.tvSeriesFlagSelect).setVisibility(helper.getLayoutPosition() == qualityPosition ? View.VISIBLE : View.GONE);
-                helper.itemView.setNextFocusUpId(tvSeriesGroup.getVisibility() == View.VISIBLE ? R.id.mSeriesSortTv : R.id.mGridViewFlag);
-                helper.itemView.setNextFocusDownId(R.id.mGridView);
-            }
-        };
-        mGridViewQuality.setAdapter(qualityAdapter);
-        mGridViewQuality.setOnItemListener(new TvRecyclerView.OnItemListener() {
-            @Override
-            public void onItemPreSelected(TvRecyclerView parent, View itemView, int position) {
-            }
-
-            @Override
-            public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
-            }
-
-            @Override
-            public void onItemClick(TvRecyclerView parent, View itemView, int position) {
-                if (playFragment == null) return;
-                if (position == qualityPosition) {
-                    if (showPreview && !fullWindows && playFragment.getPlayer().isPlaying()) enterFullPreview();
-                    return;
-                }
-                if (playFragment.selectQuality(position)) {
-                    qualityPosition = position;
-                    qualityAdapter.notifyDataSetChanged();
-                }
-            }
-        });
         isReverse = false;
         firstReverse = false;
         preFlag = "";
         if (showPreview) {
-            ensurePlayFragment();
+            playFragment = new PlayFragment();
+            getSupportFragmentManager().beginTransaction().add(R.id.previewPlayer, playFragment).commit();
+            getSupportFragmentManager().beginTransaction().show(playFragment).commitAllowingStateLoss();
             tvPlay.setText("全屏");
         }
         llPlayerFragmentContainerBlock.setFocusable(showPreview);
@@ -275,13 +213,11 @@ public class DetailActivity extends BaseActivity {
         tvSeriesGroup = findViewById(R.id.mSeriesGroupTv);
         mSeriesGroupView.setHasFixedSize(true);
         mSeriesGroupView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 0, false));
-        seriesGroupAdapter = new BaseQuickAdapter<String, BaseViewHolder>(R.layout.item_series_flag, seriesGroupOptions) {
+        seriesGroupAdapter = new BaseQuickAdapter<String, BaseViewHolder>(R.layout.item_series_group, seriesGroupOptions) {
             @Override
             protected void convert(BaseViewHolder helper, String item) {
-                TextView tvSeries = helper.getView(R.id.tvSeriesFlag);
+                TextView tvSeries = helper.getView(R.id.tvSeriesGroup);
                 tvSeries.setText(item);
-                helper.getView(R.id.tvSeriesFlagSelect).setVisibility(helper.getLayoutPosition() == selectedSeriesGroupPosition ? View.VISIBLE : View.GONE);
-                helper.itemView.setNextFocusUpId(R.id.mGridViewFlag);
                 if (helper.getLayoutPosition() == getData().size() - 1) {
                     helper.itemView.setId(View.generateViewId());
                     helper.itemView.setNextFocusRightId(helper.itemView.getId());
@@ -293,7 +229,7 @@ public class DetailActivity extends BaseActivity {
         mSeriesGroupView.setAdapter(seriesGroupAdapter);
 
         llPlayerFragmentContainerBlock.setOnClickListener(v -> {
-            enterFullPreview();
+            toggleFullPreview();
             if (firstReverse) {
                 jumpToPlay();
                 firstReverse=false;
@@ -305,7 +241,7 @@ public class DetailActivity extends BaseActivity {
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
                 if (showPreview) {
-                    enterFullPreview();
+                    toggleFullPreview();
                     if(firstReverse){
                         jumpToPlay();
                         firstReverse=false;
@@ -347,13 +283,6 @@ public class DetailActivity extends BaseActivity {
                 });
             }
         });
-        tvChangeSource.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FastClickCheckUtil.check(v);
-                startDetailFallbackFromMenu();
-            }
-        });
         tvCollect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -390,16 +319,14 @@ public class DetailActivity extends BaseActivity {
                     isReverse = !isReverse;
                     tvSeriesSort.setText(isReverse?"倒序":"正序");
                     vodInfo.reverse();
-                    if (vodInfo.playIndex >= 0) {
-                        vodInfo.playIndex=(vodInfo.seriesMap.get(vodInfo.playFlag).size()-1)-vodInfo.playIndex;
-                    }
+                    vodInfo.playIndex=(vodInfo.seriesMap.get(vodInfo.playFlag).size()-1)-vodInfo.playIndex;
                     firstReverse = !firstReverse;
                     setSeriesGroupOptions();
                     seriesAdapter.notifyDataSetChanged();
 
-                    if (vodInfo.playIndex >= 0) customSeriesScrollPos(vodInfo.playIndex);
+                    customSeriesScrollPos(vodInfo.playIndex);
                     if(currentSeriesGroupView != null) {
-                        TextView txtView = currentSeriesGroupView.findViewById(R.id.tvSeriesFlag);
+                        TextView txtView = currentSeriesGroupView.findViewById(R.id.tvSeriesGroup);
                         txtView.setTextColor(Color.WHITE);
                     }
                 }
@@ -439,48 +366,24 @@ public class DetailActivity extends BaseActivity {
             private void refresh(View itemView, int position) {
                 String newFlag = seriesFlagAdapter.getData().get(position).name;
                 if (vodInfo != null && !vodInfo.playFlag.equals(newFlag)) {
-                    String oldFlag = vodInfo.playFlag;
-                    int oldIndex = vodInfo.playIndex;
-                    VodInfo.VodSeries currentSeries = getPlayingSeries(previewVodInfo, previewVodInfo == null ? null : previewVodInfo.playFlag);
-                    List<VodInfo.VodSeries> oldSeriesList = vodInfo.seriesMap.get(oldFlag);
-                    if (currentSeries == null && previewVodInfo == null && oldIndex >= 0 && oldSeriesList != null && !oldSeriesList.isEmpty()) {
-                        int safeOldIndex = Math.max(0, Math.min(oldIndex, oldSeriesList.size() - 1));
-                        currentSeries = oldSeriesList.get(safeOldIndex);
-                    }
-                    if (currentSeries == null) {
-                        currentSeries = routeSwitchSeries;
-                    }
                     for (int i = 0; i < vodInfo.seriesFlags.size(); i++) {
                         VodInfo.VodSeriesFlag flag = vodInfo.seriesFlags.get(i);
-                        if (flag.name.equals(oldFlag)) {
+                        if (flag.name.equals(vodInfo.playFlag)) {
                             flag.selected = false;
-                            View oldItemView = mGridViewFlag.getLayoutManager().findViewByPosition(i);
-                            if (oldItemView != null) oldItemView.findViewById(R.id.tvSeriesFlagSelect).setVisibility(View.GONE);
+                            seriesFlagAdapter.notifyItemChanged(i);
                             break;
                         }
                     }
                     VodInfo.VodSeriesFlag flag = vodInfo.seriesFlags.get(position);
                     flag.selected = true;
-                    itemView.findViewById(R.id.tvSeriesFlagSelect).setVisibility(View.VISIBLE);
                     // clean pre flag select status
-                    if (oldSeriesList != null && oldIndex >= 0 && oldSeriesList.size() > oldIndex) {
-                        oldSeriesList.get(oldIndex).selected = false;
+                    if (vodInfo.seriesMap.get(vodInfo.playFlag).size() > vodInfo.playIndex) {
+                        vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex).selected = false;
                     }
                     vodInfo.playFlag = newFlag;
-                    List<VodInfo.VodSeries> newSeriesList = vodInfo.seriesMap.get(newFlag);
-                    if (newSeriesList != null && !newSeriesList.isEmpty()) {
-                        vodInfo.playIndex = findMatchingEpisodeIndex(currentSeries, newSeriesList);
-                        for (VodInfo.VodSeries series : newSeriesList) {
-                            series.selected = false;
-                        }
-                        if (vodInfo.playIndex >= 0) {
-                            newSeriesList.get(vodInfo.playIndex).selected = true;
-                            routeSwitchSeries = newSeriesList.get(vodInfo.playIndex);
-                        } else if (currentSeries != null) {
-                            routeSwitchSeries = currentSeries;
-                        }
-                    }
+                    seriesFlagAdapter.notifyItemChanged(position);
                     refreshList();
+                    mGridView.clearFocus();
                 }
                 seriesFlagFocus = itemView;
             }
@@ -508,6 +411,7 @@ public class DetailActivity extends BaseActivity {
                 FastClickCheckUtil.check(view);
                 if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
                     boolean reload = false;
+                    boolean isAllowFull = false;
                     for (int j = 0; j < vodInfo.seriesMap.get(vodInfo.playFlag).size(); j++) {
                         seriesAdapter.getData().get(j).selected = false;
                         seriesAdapter.notifyItemChanged(j);
@@ -517,23 +421,19 @@ public class DetailActivity extends BaseActivity {
                         seriesAdapter.getData().get(position).selected = true;
                         seriesAdapter.notifyItemChanged(position);
                         vodInfo.playIndex = position;
-                        routeSwitchSeries = seriesAdapter.getData().get(position);
 
                         reload = true;
                     }
                     //解决当前集不刷新的BUG
                     if (!preFlag.isEmpty() && !vodInfo.playFlag.equals(preFlag)) {
                         reload = true;
-                    }
-                    boolean isCurrentPlaying = !showPreview || isCurrentPreviewPlaying(position);
-                    if (showPreview && !isCurrentPlaying) {
-                        reload = true;
+                        isAllowFull = true;
                     }
 
                     seriesAdapter.getData().get(vodInfo.playIndex).selected = true;
                     seriesAdapter.notifyItemChanged(vodInfo.playIndex);
                     //选集全屏 想选集不全屏的注释下面一行
-                    if (showPreview && !fullWindows && previewVodInfo != null && TextUtils.equals(vodInfo.playFlag, previewVodInfo.playFlag) && (playFragment.getPlayer().isPlaying() || isCurrentPlaying)) enterFullPreview();
+                    if (showPreview && !fullWindows && !isAllowFull && playFragment.getPlayer().isPlaying())toggleFullPreview();
                     if (!showPreview || reload) {
                         jumpToPlay();
                         firstReverse=false;
@@ -545,14 +445,15 @@ public class DetailActivity extends BaseActivity {
         mSeriesGroupView.setOnItemListener(new TvRecyclerView.OnItemListener() {
             @Override
             public void onItemPreSelected(TvRecyclerView parent, View itemView, int position) {
-                TextView txtView = itemView.findViewById(R.id.tvSeriesFlag);
+                TextView txtView = itemView.findViewById(R.id.tvSeriesGroup);
                 txtView.setTextColor(Color.WHITE);
 //                currentSeriesGroupView = null;
             }
 
             @Override
             public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
-                selectSeriesGroup(itemView, position);
+                TextView txtView = itemView.findViewById(R.id.tvSeriesGroup);
+                txtView.setTextColor(mContext.getResources().getColor(R.color.color_02F8E1));
                 if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
                     int targetPos = position * GroupCount;
 //                    mGridView.smoothScrollToPosition(targetPos);
@@ -567,10 +468,11 @@ public class DetailActivity extends BaseActivity {
         });
         tvSeriesSort.setOnFocusChangeListener((view, hasFocus) -> {
             if (hasFocus) {
+                tvSeriesSort.setTextColor(mContext.getResources().getColor(R.color.color_02F8E1));
                 if (vodInfo != null && Objects.requireNonNull(vodInfo.seriesMap.get(vodInfo.playFlag)).size() > 0) {
                     int firstVisible = mGridView.getFirstVisiblePosition();
                     int lastVisible = mGridView.getLastVisiblePosition();
-                    if (vodInfo.playIndex >= 0 && (vodInfo.playIndex < firstVisible || vodInfo.playIndex > lastVisible)) {
+                    if (vodInfo.playIndex < firstVisible || vodInfo.playIndex > lastVisible) {
                         customSeriesScrollPos(vodInfo.playIndex);
                     }
                 }
@@ -582,14 +484,15 @@ public class DetailActivity extends BaseActivity {
             @Override
             public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
                 FastClickCheckUtil.check(view);
-                selectSeriesGroup(view, position);
+                TextView newTxtView = view.findViewById(R.id.tvSeriesGroup);
+                newTxtView.setTextColor(mContext.getResources().getColor(R.color.color_02F8E1));
                 if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
                     int targetPos =  position * GroupCount+1;
 
                     customSeriesScrollPos(targetPos);
                 }
                 if(currentSeriesGroupView != null) {
-                    TextView txtView = currentSeriesGroupView.findViewById(R.id.tvSeriesFlag);
+                    TextView txtView = currentSeriesGroupView.findViewById(R.id.tvSeriesGroup);
                     txtView.setTextColor(Color.WHITE);
                 }
                 currentSeriesGroupView = view;
@@ -603,23 +506,11 @@ public class DetailActivity extends BaseActivity {
             tvPlay.requestFocus();
         }
         setLoadSir(llLayout);
-        if (fullWindows) {
-            setFullPreview(true);
-        }
     }
 
     //解决类似海贼王的超长动漫 焦点滚动失败的问题
-    private void selectSeriesGroup(View selectedView, int position) {
-        if (selectedSeriesGroupPosition == position) return;
-        View previousView = mSeriesGroupView.getLayoutManager().findViewByPosition(selectedSeriesGroupPosition);
-        if (previousView != null) previousView.findViewById(R.id.tvSeriesFlagSelect).setVisibility(View.GONE);
-        selectedSeriesGroupPosition = position;
-        selectedView.findViewById(R.id.tvSeriesFlagSelect).setVisibility(View.VISIBLE);
-    }
-
     void customSeriesScrollPos(int targetPos)
     {
-        if (targetPos < 0) return;
         mGridViewLayoutMgr.scrollToPositionWithOffset(targetPos>10?targetPos - 10:0, 0);
         mGridView.postDelayed(() -> {
             this.smoothScroller.setTargetPosition(targetPos);
@@ -647,32 +538,32 @@ public class DetailActivity extends BaseActivity {
 //            bundle.putSerializable("VodInfo", vodInfo);
             App.getInstance().setVodInfo(vodInfo);
             if (showPreview) {
-                ensurePlayFragment();
-                updatePreviewVodInfo();
-                App.getInstance().setVodInfo(previewVodInfo);
-                if (playFragment != null) playFragment.setData(bundle);
+                if (previewVodInfo == null) {
+                    try {
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        ObjectOutputStream oos = new ObjectOutputStream(bos);
+                        oos.writeObject(vodInfo);
+                        oos.flush();
+                        oos.close();
+                        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray()));
+                        previewVodInfo = (VodInfo) ois.readObject();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (previewVodInfo != null) {
+                    previewVodInfo.playerCfg = vodInfo.playerCfg;
+                    previewVodInfo.playFlag = vodInfo.playFlag;
+                    previewVodInfo.playIndex = vodInfo.playIndex;
+                    previewVodInfo.seriesMap = vodInfo.seriesMap;
+//                    bundle.putSerializable("VodInfo", previewVodInfo);
+                    App.getInstance().setVodInfo(previewVodInfo);
+                }
+                playFragment.setData(bundle);
             } else {
-                ensurePlayFragment();
-                if (playFragment != null) playFragment.setData(bundle);
-                enterFullPreview();
+                jumpActivity(PlayActivity.class, bundle);
             }
         }
-    }
-
-    private void updatePreviewVodInfo() {
-        if (previewVodInfo == null) {
-            previewVodInfo = new VodInfo();
-        }
-        previewVodInfo.id = vodInfo.id;
-        previewVodInfo.name = vodInfo.name;
-        previewVodInfo.pic = vodInfo.pic;
-        previewVodInfo.sourceKey = vodInfo.sourceKey;
-        previewVodInfo.playNote = vodInfo.playNote;
-        previewVodInfo.seriesFlags = vodInfo.seriesFlags;
-        previewVodInfo.seriesMap = vodInfo.seriesMap;
-        previewVodInfo.playerCfg = vodInfo.playerCfg;
-        previewVodInfo.playFlag = vodInfo.playFlag;
-        previewVodInfo.playIndex = vodInfo.playIndex;
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -689,9 +580,7 @@ public class DetailActivity extends BaseActivity {
                     break;
                 }
             }
-            if(canSelect && vodInfo.playIndex >= 0 && vodInfo.playIndex < vodInfo.seriesMap.get(vodInfo.playFlag).size()) {
-                vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex).selected = true;
-            }
+            if(canSelect)vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex).selected = true;
         }
 
         Paint pFont = new Paint();
@@ -722,7 +611,7 @@ public class DetailActivity extends BaseActivity {
             @Override
             public void run() {
 //                mGridView.smoothScrollToPosition(vodInfo.playIndex);
-                if (vodInfo.playIndex >= 0) customSeriesScrollPos(vodInfo.playIndex);
+                customSeriesScrollPos(vodInfo.playIndex);
             }
         }, 100);
     }
@@ -757,43 +646,10 @@ public class DetailActivity extends BaseActivity {
             }
 //            if(vodInfo.reverseSort) Collections.reverse(seriesGroupOptions);
 
-            selectedSeriesGroupPosition = Math.max(0, Math.min(vodInfo.playIndex / GroupCount, seriesGroupOptions.size() - 1));
             seriesGroupAdapter.notifyDataSetChanged();
         }else {
             tvSeriesGroup.setVisibility(View.GONE);
         }
-        if (!mGridViewFlag.hasFocus()) seriesFlagAdapter.notifyDataSetChanged();
-        mGridViewQuality.setNextFocusUpId(tvSeriesGroup.getVisibility() == View.VISIBLE ? R.id.mSeriesSortTv : R.id.mGridViewFlag);
-    }
-
-    private void updateQualityOptions(JSONObject result) {
-        ArrayList<String> options = new ArrayList<>();
-        try {
-            Object value = result == null ? null : result.opt("url");
-            JSONArray urls = value instanceof JSONArray ? (JSONArray) value : value instanceof String ? new JSONArray((String) value) : null;
-            if (urls != null) for (int i = 0; i + 1 < urls.length(); i += 2) options.add(urls.optString(i));
-        } catch (Throwable th) {
-        }
-        if (qualityOptions.equals(options)) {
-            if (qualityPosition == 0) return;
-            qualityPosition = 0;
-            qualityAdapter.notifyDataSetChanged();
-            return;
-        }
-        qualityOptions.clear();
-        qualityOptions.addAll(options);
-        qualityPosition = 0;
-        boolean visible = showPreview && options.size() > 1;
-        mGridViewQuality.setVisibility(visible ? View.VISIBLE : View.GONE);
-        seriesFlagAdapter.notifyDataSetChanged();
-        seriesAdapter.notifyDataSetChanged();
-        qualityAdapter.setNewData(new ArrayList<>(qualityOptions));
-        int up = tvSeriesGroup.getVisibility() == View.VISIBLE ? R.id.mSeriesSortTv : R.id.mGridViewFlag;
-        int down = visible ? R.id.mGridViewQuality : R.id.mGridView;
-        mGridViewQuality.setNextFocusUpId(up);
-        mGridViewQuality.setNextFocusDownId(R.id.mGridView);
-        tvSeriesSort.setNextFocusDownId(down);
-        mSeriesGroupView.setNextFocusDownId(down);
     }
 
     private void setTextShow(TextView view, String tag, String info) {
@@ -806,86 +662,27 @@ public class DetailActivity extends BaseActivity {
     }
 
     private String removeHtmlTag(String info) {
-        if (TextUtils.isEmpty(info))
+        if (info == null)
             return "";
-        String text = info.replaceAll("\\[a=cr:(?:\\{.*?\\}|\\[.*?\\])\\/](.*?)\\[\\/a]", "$1");
-        text = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
-                ? Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString()
-                : Html.fromHtml(text).toString();
-        return text.replaceAll("\\s", "");
+        return info.replaceAll("\\<.*?\\>", "").replaceAll("\\s", "");
     }
-
-    private void applyPreviewRoundCorners() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            return;
-        }
-        final float radius = getResources().getDimension(R.dimen.preview_player_radius);
-        ViewOutlineProvider provider = new ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, Outline outline) {
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
-            }
-        };
-        llPlayerFragmentContainer.setClipToOutline(true);
-        llPlayerFragmentContainer.setOutlineProvider(provider);
-        llPlayerFragmentContainerBlock.setClipToOutline(true);
-        llPlayerFragmentContainerBlock.setOutlineProvider(provider);
-    }
-
-    private void applyThumbPreviewStyle() {
-        thumbContainer.setVisibility(showPreview ? View.GONE : View.VISIBLE);
-        llPlayerPlace.setVisibility(showPreview ? View.VISIBLE : View.GONE);
-        ivThumb.setVisibility(!showPreview ? View.VISIBLE : View.GONE);
-        thumbContainer.setBackgroundResource(showPreview ? R.drawable.shape_detail_thumb_bg : R.drawable.shape_detail_thumb_idle_bg);
-    }
-
-    private void setPreviewRoundClip(boolean enable) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            return;
-        }
-        llPlayerFragmentContainer.setClipToOutline(enable);
-        llPlayerFragmentContainerBlock.setClipToOutline(enable);
-        llPlayerFragmentContainer.setBackgroundResource(enable ? R.drawable.preview_player_round : android.R.color.black);
-    }
-
 
     private void initViewModel() {
         sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
         sourceViewModel.detailResult.observe(this, new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
-                if (detailFallbackActive && !detailFallbackLoadingCandidate) {
-                    return;
-                }
-                if (absXml != null && !TextUtils.isEmpty(absXml.sourceKey)
-                        && !TextUtils.equals(absXml.sourceKey, sourceKey)
-                        && !("push_fallback".equals(absXml.sourceKey) && "push_agent".equals(sourceKey))) {
-                    return;
-                }
                 if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
-                    boolean fallbackResult = detailFallbackLoadingCandidate;
-                    if (detailFallbackLoadingCandidate) {
-                        detailFallbackLoadingCandidate = false;
-                        llLayout.removeCallbacks(detailFallbackDetailTimeout);
-                    }
-                    if (fallbackResult) {
-                        SourceBean fallbackSource = ApiConfig.get().getSource(sourceKey);
-                        String fallbackName = fallbackSource == null ? sourceKey : fallbackSource.getName();
-                        Toast.makeText(DetailActivity.this, "站点切换至" + fallbackName, Toast.LENGTH_SHORT).show();
-                    }
                     showSuccess();
                     if(!TextUtils.isEmpty(absXml.msg) && !absXml.msg.equals("数据列表")){
-                        resetDetailFallback();
                         Toast.makeText(DetailActivity.this, absXml.msg, Toast.LENGTH_SHORT).show();
                         showEmpty();
                         return;
                     }
                     mVideo = absXml.movie.videoList.get(0);
                     mVideo.id = vodId;
-                    if (TextUtils.isEmpty(mVideo.name))mVideo.name = vod_name;
                     if (TextUtils.isEmpty(mVideo.name))mVideo.name = "TVBox";
                     vodInfo = new VodInfo();
-                    routeSwitchSeries = null;
                     if((mVideo.pic==null || mVideo.pic.isEmpty()) && !vod_picture.isEmpty()){
                         mVideo.pic=vod_picture;
                     }
@@ -894,11 +691,7 @@ public class DetailActivity extends BaseActivity {
                     sourceKey = mVideo.sourceKey;
 
                     tvName.setText(mVideo.name);
-                    SourceBean displaySource = ApiConfig.get().getSource(firstsourceKey);
-                    if (displaySource == null) {
-                        displaySource = ApiConfig.get().getSource(sourceKey);
-                    }
-                    setTextShow(tvSite, "来源：", displaySource == null ? "" : displaySource.getName());
+                    setTextShow(tvSite, "来源：", ApiConfig.get().getSource(firstsourceKey).getName());
                     setTextShow(tvYear, "年份：", mVideo.year == 0 ? "" : String.valueOf(mVideo.year));
                     setTextShow(tvArea, "地区：", mVideo.area);
                     setTextShow(tvLang, "语言：", mVideo.lang);
@@ -907,13 +700,22 @@ public class DetailActivity extends BaseActivity {
                     } else {
                     	setTextShow(tvType, "类型：", mVideo.type);
                     }
-                    setTextShow(tvActor, "演员：", removeHtmlTag(mVideo.actor));
-                    setTextShow(tvDirector, "导演：", removeHtmlTag(mVideo.director));
+                    setTextShow(tvActor, "演员：", mVideo.actor);
+                    setTextShow(tvDirector, "导演：", mVideo.director);
                     setTextShow(tvDes, "内容简介：", removeHtmlTag(mVideo.des));
                     if (!TextUtils.isEmpty(mVideo.pic)) {
-                        com.github.tvbox.osc.util.ImgUtil.load(DefaultConfig.checkReplaceProxy(mVideo.pic), ivThumb, AutoSizeUtils.mm2px(mContext, 10), AutoSizeUtils.mm2px(mContext, 300), AutoSizeUtils.mm2px(mContext, 400), mVideo.name);
+                        Picasso.get()
+                                .load(DefaultConfig.checkReplaceProxy(mVideo.pic))
+                                .transform(new RoundTransformation(MD5.string2MD5(mVideo.pic))
+                                        .centerCorp(true)
+                                        .override(AutoSizeUtils.mm2px(mContext, 300), AutoSizeUtils.mm2px(mContext, 400))
+                                        .roundRadius(AutoSizeUtils.mm2px(mContext, 10), RoundTransformation.RoundType.ALL))
+                                .placeholder(R.drawable.img_loading_placeholder)
+                                .noFade()
+                                .error(R.drawable.img_loading_placeholder)
+                                .into(ivThumb);
                     } else {
-                        ivThumb.setImageDrawable(com.github.tvbox.osc.util.ImgUtil.createTextDrawable(mVideo.name));
+                        ivThumb.setImageResource(R.drawable.img_loading_placeholder);
                     }
 
                     if (vodInfo.seriesMap != null && vodInfo.seriesMap.size() > 0) {
@@ -943,11 +745,6 @@ public class DetailActivity extends BaseActivity {
                         if (vodInfo.playFlag == null || !vodInfo.seriesMap.containsKey(vodInfo.playFlag))
                             vodInfo.playFlag = (String) vodInfo.seriesMap.keySet().toArray()[0];
 
-                        restoreDetailFallbackEpisode();
-                        resetDetailFallback();
-                        List<VodInfo.VodSeries> playingSeriesList = vodInfo.seriesMap.get(vodInfo.playFlag);
-                        vodInfo.playIndex = Math.max(0, Math.min(vodInfo.playIndex, playingSeriesList.size() - 1));
-
                         int flagScrollTo = 0;
                         for (int j = 0; j < vodInfo.seriesFlags.size(); j++) {
                             VodInfo.VodSeriesFlag flag = vodInfo.seriesFlags.get(j);
@@ -958,7 +755,7 @@ public class DetailActivity extends BaseActivity {
                                 flag.selected = false;
                         }
                         //设置播放地址
-                        setTextShow(tvPlayUrl, "播放地址：", playingSeriesList.get(vodInfo.playIndex).url);
+                        setTextShow(tvPlayUrl, "播放地址：", vodInfo.seriesMap.get(vodInfo.playFlag).get(0).url);
                         seriesFlagAdapter.setNewData(vodInfo.seriesFlags);
                         mGridViewFlag.scrollToPosition(flagScrollTo);
 
@@ -976,24 +773,12 @@ public class DetailActivity extends BaseActivity {
                         tvSeriesGroup.setVisibility(View.GONE);
                         tvPlay.setVisibility(View.GONE);
                         mEmptyPlayList.setVisibility(View.VISIBLE);
-                        handleNoPlayableDetail();
                     }
                 } else {
-                    if (detailFallbackLoadingCandidate) {
-                        detailFallbackLoadingCandidate = false;
-                        detailFallbackDetailTimedOut = true;
-                        llLayout.removeCallbacks(detailFallbackDetailTimeout);
-                        loadNextDetailFallbackSource();
-                        return;
-                    }
-                    handleEmptyDetail(absXml);
+                    showEmpty();
+                    llPlayerFragmentContainer.setVisibility(View.GONE);
+                    llPlayerFragmentContainerBlock.setVisibility(View.GONE);
                 }
-            }
-        });
-        sourceViewModel.detailFallbackSearchResult.observe(this, new Observer<AbsXml>() {
-            @Override
-            public void onChanged(AbsXml absXml) {
-                onDetailFallbackSearchResult(absXml);
             }
         });
     }
@@ -1006,514 +791,38 @@ public class DetailActivity extends BaseActivity {
     }
 
     private String  vod_picture="";
-    private String  vod_name="";
     private void initData() {
         Intent intent = getIntent();
         if (intent != null && intent.getExtras() != null) {
             Bundle bundle = intent.getExtras();
-            vod_name=bundle.getString("title", "");
             vod_picture=bundle.getString("picture", "");
-            fromCollect = bundle.getBoolean("collect", false);
-            Object fallbackCandidates = bundle.getSerializable(EXTRA_DETAIL_FALLBACK_CANDIDATES);
-            if (fallbackCandidates instanceof ArrayList) {
-                cacheDetailFallbackCandidates(vod_name, (ArrayList<Movie.Video>) fallbackCandidates);
-            }
             loadDetail(bundle.getString("id", null), bundle.getString("sourceKey", ""));
         }
     }
 
     private void loadDetail(String vid, String key) {
-        loadDetail(vid, key, false);
-    }
-
-    private void loadDetail(String vid, String key, boolean fallback) {
-        if (!fallback) {
-            resetDetailFallback();
-        }
-        vodId = vid;
-        sourceKey = key;
-        firstsourceKey = key;
-        if (TextUtils.isEmpty(vid) || vid.startsWith("msearch:") || ApiConfig.get().getSource(sourceKey) == null) {
-            handleNoPlayableDetail();
-            return;
-        }
-        if (!fallback) {
+        if (vid != null) {
+            vodId = vid;
+            sourceKey = key;
+            firstsourceKey = key;
             showLoading();
-        }
-        if (fallback && detailFallbackActive) {
-            llLayout.removeCallbacks(detailFallbackDetailTimeout);
-            llLayout.postDelayed(detailFallbackDetailTimeout, DETAIL_FALLBACK_DETAIL_TIMEOUT_MS);
-        }
-        sourceViewModel.getDetail(sourceKey, vodId, fallback && detailFallbackActive);
-        boolean isVodCollect = RoomDataManger.isVodCollect(sourceKey, vodId);
-        if (isVodCollect) {
-            tvCollect.setText("取消收藏");
-        } else {
-            tvCollect.setText("加入收藏");
-        }
-    }
-
-    private void handleEmptyDetail(AbsXml data) {
-        boolean shouldFinish = data != null && !TextUtils.isEmpty(data.msg);
-        if (shouldFinish || fromCollect) {
-            resetDetailFallback();
-            if (shouldFinish) {
-                Toast.makeText(this, data.msg, Toast.LENGTH_SHORT).show();
-            }
-            finish();
-            return;
-        }
-        handleNoPlayableDetail();
-    }
-
-    private void handleNoPlayableDetail() {
-        if (detailFallbackActive) {
-            detailFallbackLoadingCandidate = false;
-            loadNextDetailFallbackSource();
-            return;
-        }
-        startDetailFallback();
-    }
-
-    public boolean startDetailFallbackAfterLinesExhausted() {
-        return startDetailFallback(false);
-    }
-
-    private void startDetailFallbackFromMenu() {
-        if (!startDetailFallback(true)) {
-            Toast.makeText(this, "暂无可切换的片源", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private boolean startDetailFallback(boolean manual) {
-        SourceBean currentSource = ApiConfig.get().getSource(sourceKey);
-        if (isFinishing() || currentSource == null || !currentSource.isChangeable()) {
-            return false;
-        }
-        if (detailFallbackActive) {
-            return true;
-        }
-        detailFallbackKeepCurrentDetail = mVideo != null && vodInfo != null
-                && vodInfo.seriesMap != null && !vodInfo.seriesMap.isEmpty();
-        llLayout.removeCallbacks(detailFallbackDetailTimeout);
-        captureDetailFallbackEpisode();
-        if (mVideo != null && !TextUtils.isEmpty(mVideo.name)) {
-            vod_name = mVideo.name;
-        }
-        if (TextUtils.isEmpty(vod_name)) {
-            return false;
-        }
-        detailFallbackExcludedSourceKey = sourceKey;
-        detailFallbackTitle = vod_name.trim();
-        addDetailFallbackUsedSource(sourceKey);
-        if (loadDetailFallbackCache()) {
-            return true;
-        }
-        LOG.i("echo-detail fallback " + (manual ? "manual" : "after lines exhausted") + ": " + vod_name);
-        startDetailFallback();
-        return detailFallbackActive;
-    }
-
-    private void startDetailFallback() {
-        detailFallbackTitle = vod_name == null ? "" : vod_name.trim();
-        if (TextUtils.isEmpty(detailFallbackTitle)) {
-            showDetailEmpty();
-            return;
-        }
-
-        for (SourceBean bean : ApiConfig.get().getSourceBeanList()) {
-            if (bean.isSearchable() && bean.isChangeable() && !TextUtils.equals(bean.getKey(), detailFallbackExcludedSourceKey) && !isDetailFallbackSourceUsed(bean.getKey())) {
-                detailFallbackSourceOrder.add(bean.getKey());
-            }
-        }
-        if (detailFallbackSourceOrder.isEmpty()) {
-            if (!detailFallbackKeepCurrentDetail) {
-                showDetailEmpty();
-            }
-            return;
-        }
-
-        detailFallbackActive = true;
-        detailFallbackSearching = true;
-        detailFallbackSearchCollecting = true;
-        detailFallbackSearchTimedOut = false;
-        detailFallbackDetailTimedOut = false;
-        detailFallbackSearchTimeoutScheduled = false;
-        detailFallbackLoadingCandidate = false;
-        detailFallbackBatchIndex = 0;
-        detailFallbackNextSourceIndex = 0;
-        detailFallbackToken = "detail_fallback_" + (++detailFallbackRequestIndex);
-        detailFallbackTriedKeys.add(getDetailFallbackKey(sourceKey, vodId));
-        LOG.i("echo-detail fallback search: " + detailFallbackTitle + ", sources=" + detailFallbackSourceOrder.size());
-        scheduleDetailFallbackSearch();
-    }
-
-    private void captureDetailFallbackEpisode() {
-        detailFallbackEpisode = null;
-        detailFallbackEpisodeIndex = -1;
-        if (vodInfo == null || vodInfo.seriesMap == null || TextUtils.isEmpty(vodInfo.playFlag)) {
-            return;
-        }
-        List<VodInfo.VodSeries> seriesList = vodInfo.seriesMap.get(vodInfo.playFlag);
-        if (seriesList == null || seriesList.isEmpty()) {
-            return;
-        }
-        detailFallbackEpisodeIndex = Math.max(0, Math.min(vodInfo.playIndex, seriesList.size() - 1));
-        detailFallbackEpisode = seriesList.get(detailFallbackEpisodeIndex);
-    }
-
-    private void restoreDetailFallbackEpisode() {
-        if (detailFallbackEpisode == null || detailFallbackEpisodeIndex < 0 || vodInfo == null || vodInfo.seriesMap == null) {
-            return;
-        }
-        String preferredFlag = vodInfo.playFlag;
-        List<VodInfo.VodSeries> preferredList = vodInfo.seriesMap.get(preferredFlag);
-        int matchedIndex = findMatchingEpisodeIndex(detailFallbackEpisode, preferredList);
-        if (matchedIndex >= 0) {
-            vodInfo.playIndex = matchedIndex;
-            return;
-        }
-        if (vodInfo.seriesFlags != null) {
-            for (VodInfo.VodSeriesFlag seriesFlag : vodInfo.seriesFlags) {
-                if (seriesFlag == null || TextUtils.isEmpty(seriesFlag.name) || TextUtils.equals(preferredFlag, seriesFlag.name)) {
-                    continue;
-                }
-                List<VodInfo.VodSeries> seriesList = vodInfo.seriesMap.get(seriesFlag.name);
-                matchedIndex = findMatchingEpisodeIndex(detailFallbackEpisode, seriesList);
-                if (matchedIndex >= 0) {
-                    vodInfo.playFlag = seriesFlag.name;
-                    vodInfo.playIndex = matchedIndex;
-                    return;
-                }
-            }
-        }
-        for (String flag : vodInfo.seriesMap.keySet()) {
-            if (TextUtils.equals(preferredFlag, flag) || containsSeriesFlag(flag)) {
-                continue;
-            }
-            List<VodInfo.VodSeries> seriesList = vodInfo.seriesMap.get(flag);
-            matchedIndex = findMatchingEpisodeIndex(detailFallbackEpisode, seriesList);
-            if (matchedIndex >= 0) {
-                vodInfo.playFlag = flag;
-                vodInfo.playIndex = matchedIndex;
-                return;
-            }
-        }
-        if (preferredList != null && !preferredList.isEmpty()) {
-            vodInfo.playIndex = Math.max(0, Math.min(detailFallbackEpisodeIndex, preferredList.size() - 1));
-        }
-    }
-
-    private boolean containsSeriesFlag(String name) {
-        if (vodInfo == null || vodInfo.seriesFlags == null) {
-            return false;
-        }
-        for (VodInfo.VodSeriesFlag flag : vodInfo.seriesFlags) {
-            if (flag != null && TextUtils.equals(flag.name, name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void onDetailFallbackSearchResult(AbsXml data) {
-        if (!detailFallbackActive || !detailFallbackSearchCollecting || data == null || !detailFallbackBatchToken.equals(data.searchToken)) {
-            return;
-        }
-        detailFallbackPendingSources.remove(data.sourceKey);
-        if (data.movie != null && data.movie.videoList != null) {
-            for (Movie.Video video : data.movie.videoList) {
-                if (video == null || TextUtils.isEmpty(video.id) || isDetailFallbackSourceUsed(video.sourceKey) || !detailFallbackTitle.equals(video.name == null ? "" : video.name.trim())) {
-                    continue;
-                }
-                String candidateKey = getDetailFallbackKey(video.sourceKey, video.id);
-                if (!detailFallbackTriedKeys.contains(candidateKey) && detailFallbackCandidateKeys.add(candidateKey)) {
-                    detailFallbackCandidates.add(video);
-                    cacheDetailFallbackCandidate(video);
-                }
-            }
-        }
-        if (!detailFallbackLoadingCandidate && !detailFallbackCandidates.isEmpty()
-                && (!detailFallbackSearchTimedOut || detailFallbackDetailTimedOut)) {
-            LOG.i("echo-detail fallback candidates: " + detailFallbackCandidates.size());
-            loadNextDetailFallbackSource();
-        }
-        if (!detailFallbackLoadingCandidate) {
-            if (detailFallbackSearching) {
-                scheduleDetailFallbackSearch();
-            } else if (detailFallbackPendingSources.isEmpty()) {
-                finishDetailFallbackSearchCollection();
-            }
-        }
-    }
-
-    private void scheduleDetailFallbackSearch() {
-        if (!detailFallbackActive || !detailFallbackSearching) {
-            return;
-        }
-        if (!detailFallbackPendingSources.isEmpty() || detailFallbackLoadingCandidate) {
-            return;
-        }
-        if (detailFallbackNextSourceIndex >= detailFallbackSourceOrder.size()) {
-            detailFallbackSearching = false;
-            llLayout.removeCallbacks(detailFallbackTimeout);
-            stopDetailFallbackSearchExecutor();
-            LOG.i("echo-detail fallback candidates: " + detailFallbackCandidates.size());
-            loadNextDetailFallbackSource();
-            return;
-        }
-
-        stopDetailFallbackSearchExecutor();
-        detailFallbackSearchExecutor = Executors.newFixedThreadPool(DETAIL_FALLBACK_MAX_SEARCH);
-        detailFallbackBatchToken = detailFallbackToken + "_batch_" + (++detailFallbackBatchIndex);
-        int batchEnd = Math.min(detailFallbackNextSourceIndex + DETAIL_FALLBACK_MAX_SEARCH, detailFallbackSourceOrder.size());
-        while (detailFallbackNextSourceIndex < batchEnd) {
-            final String searchKey = detailFallbackSourceOrder.get(detailFallbackNextSourceIndex++);
-            final String searchTitle = detailFallbackTitle;
-            final String searchToken = detailFallbackBatchToken;
-            detailFallbackPendingSources.add(searchKey);
-            detailFallbackSearchExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    sourceViewModel.getDetailFallbackSearch(searchKey, searchTitle, searchToken);
-                }
-            });
-        }
-        if (!detailFallbackSearchTimeoutScheduled) {
-            detailFallbackSearchTimeoutScheduled = true;
-            llLayout.postDelayed(detailFallbackTimeout, DETAIL_FALLBACK_SEARCH_TIMEOUT_MS);
-        }
-    }
-
-    private void finishDetailFallbackSearchOnTimeout() {
-        if (!detailFallbackActive || !detailFallbackSearching) {
-            return;
-        }
-        detailFallbackSearchTimeoutScheduled = false;
-        LOG.i("echo-detail fallback search timeout: " + detailFallbackBatchToken);
-        // Keep the current 20 searches alive so late results can be used by the next fallback source.
-        detailFallbackSearching = false;
-        detailFallbackSearchTimedOut = true;
-        detailFallbackNextSourceIndex = detailFallbackSourceOrder.size();
-        if (!detailFallbackLoadingCandidate) {
-            LOG.i("echo-detail fallback candidates: " + detailFallbackCandidates.size());
-            if (!detailFallbackCandidates.isEmpty()) {
-                loadNextDetailFallbackSource();
+            sourceViewModel.getDetail(sourceKey, vodId);
+            boolean isVodCollect = RoomDataManger.isVodCollect(sourceKey, vodId);
+            if (isVodCollect) {
+                tvCollect.setText("取消收藏");
             } else {
-                showDetailFallbackEmptyIfNeeded();
+                tvCollect.setText("加入收藏");
             }
         }
     }
 
-    private void loadNextDetailFallbackSource() {
-        while (!detailFallbackCandidates.isEmpty()) {
-            Movie.Video video = detailFallbackCandidates.remove(0);
-            String candidateKey = getDetailFallbackKey(video.sourceKey, video.id);
-            if (isDetailFallbackSourceUsed(video.sourceKey) || !detailFallbackTriedKeys.add(candidateKey)) {
-                continue;
-            }
-            LOG.i("echo-detail fallback source: " + video.sourceKey + ", id=" + video.id);
-            detailFallbackLoadingCandidate = true;
-            detailFallbackDetailTimedOut = false;
-            addDetailFallbackUsedSource(video.sourceKey);
-            vod_name = video.name == null ? "" : video.name;
-            vod_picture = video.pic == null ? "" : video.pic;
-            loadDetail(video.id, video.sourceKey, true);
-            return;
-        }
-        if (detailFallbackSearching || detailFallbackSearchCollecting) {
-            if (detailFallbackPendingSources.isEmpty()) {
-                if (detailFallbackSearching) {
-                    scheduleDetailFallbackSearch();
-                } else {
-                    finishDetailFallbackSearchCollection();
-                }
-            }
-            return;
-        }
-        finishDetailFallbackWithoutResult();
-    }
-
-    private void finishDetailFallbackSearchCollection() {
-        if (!detailFallbackSearchCollecting) {
-            return;
-        }
-        detailFallbackSearchCollecting = false;
-        stopDetailFallbackSearchExecutor();
-        OkGo.getInstance().cancelTag(DETAIL_FALLBACK_SEARCH_TAG);
-        if (!detailFallbackLoadingCandidate) {
-            finishDetailFallbackWithoutResult();
-        }
-    }
-
-    private void showDetailFallbackEmptyIfNeeded() {
-        if (!detailFallbackKeepCurrentDetail) {
-            showDetailEmpty();
-        }
-    }
-
-    private void finishDetailFallbackWithoutResult() {
-        boolean keepCurrentDetail = detailFallbackKeepCurrentDetail;
-        resetDetailFallback();
-        if (!keepCurrentDetail) {
-            showDetailEmpty();
-        }
-    }
-
-    private void finishDetailFallbackDetailOnTimeout() {
-        if (!detailFallbackActive || !detailFallbackLoadingCandidate) {
-            return;
-        }
-        LOG.i("echo-detail fallback detail timeout: " + sourceKey);
-        detailFallbackLoadingCandidate = false;
-        detailFallbackDetailTimedOut = true;
-        OkGo.getInstance().cancelTag("detail");
-        loadNextDetailFallbackSource();
-    }
-
-    private String getDetailFallbackKey(String key, String id) {
-        return (key == null ? "" : key) + "|" + (id == null ? "" : id);
-    }
-
-    private boolean loadDetailFallbackCache() {
-        List<Movie.Video> cachedCandidates = detailFallbackCache.get(detailFallbackTitle);
-        if (cachedCandidates == null || cachedCandidates.isEmpty()) {
-            return false;
-        }
-        for (Movie.Video video : cachedCandidates) {
-            SourceBean source = video == null ? null : ApiConfig.get().getSource(video.sourceKey);
-            if (video == null || source == null || !source.isChangeable()
-                    || TextUtils.equals(video.sourceKey, detailFallbackExcludedSourceKey) || isDetailFallbackSourceUsed(video.sourceKey)) {
-                continue;
-            }
-            String candidateKey = getDetailFallbackKey(video.sourceKey, video.id);
-            if (detailFallbackCandidateKeys.add(candidateKey)) {
-                detailFallbackCandidates.add(video);
-            }
-        }
-        if (detailFallbackCandidates.isEmpty()) {
-            return false;
-        }
-        detailFallbackActive = true;
-        detailFallbackLoadingCandidate = false;
-        detailFallbackTriedKeys.add(getDetailFallbackKey(sourceKey, vodId));
-        LOG.i("echo-detail fallback cache: " + detailFallbackTitle + ", candidates=" + detailFallbackCandidates.size());
-        loadNextDetailFallbackSource();
-        return true;
-    }
-
-    private void cacheDetailFallbackCandidates(String title, List<Movie.Video> candidates) {
-        title = title == null ? "" : title.trim();
-        if (TextUtils.isEmpty(title) || candidates == null || candidates.isEmpty()) {
-            return;
-        }
-        List<Movie.Video> cachedCandidates = detailFallbackCache.get(title);
-        if (cachedCandidates == null) {
-            cachedCandidates = new ArrayList<>();
-            detailFallbackCache.put(title, cachedCandidates);
-        }
-        for (Movie.Video video : candidates) {
-            if (cachedCandidates.size() >= DETAIL_FALLBACK_MAX_SEARCH || video == null
-                    || TextUtils.isEmpty(video.id) || !TextUtils.equals(title, video.name == null ? "" : video.name.trim())) {
-                continue;
-            }
-            String candidateKey = getDetailFallbackKey(video.sourceKey, video.id);
-            boolean exists = false;
-            for (Movie.Video cachedVideo : cachedCandidates) {
-                if (candidateKey.equals(getDetailFallbackKey(cachedVideo.sourceKey, cachedVideo.id))) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                cachedCandidates.add(video);
-            }
-        }
-    }
-
-    private void cacheDetailFallbackCandidate(Movie.Video video) {
-        List<Movie.Video> cachedCandidates = detailFallbackCache.get(detailFallbackTitle);
-        if (cachedCandidates == null) {
-            cachedCandidates = new ArrayList<>();
-            detailFallbackCache.put(detailFallbackTitle, cachedCandidates);
-        }
-        String candidateKey = getDetailFallbackKey(video.sourceKey, video.id);
-        for (Movie.Video cachedVideo : cachedCandidates) {
-            if (candidateKey.equals(getDetailFallbackKey(cachedVideo.sourceKey, cachedVideo.id))) {
-                return;
-            }
-        }
-        cachedCandidates.add(video);
-    }
-
-    private void addDetailFallbackUsedSource(String sourceKey) {
-        if (TextUtils.isEmpty(detailFallbackTitle) || TextUtils.isEmpty(sourceKey)) {
-            return;
-        }
-        Set<String> usedSources = detailFallbackUsedSourceKeys.get(detailFallbackTitle);
-        if (usedSources == null) {
-            usedSources = new HashSet<>();
-            detailFallbackUsedSourceKeys.put(detailFallbackTitle, usedSources);
-        }
-        usedSources.add(sourceKey);
-    }
-
-    private boolean isDetailFallbackSourceUsed(String sourceKey) {
-        Set<String> usedSources = detailFallbackUsedSourceKeys.get(detailFallbackTitle);
-        return usedSources != null && usedSources.contains(sourceKey);
-    }
-
-    private void showDetailEmpty() {
-        showEmpty();
-        llPlayerFragmentContainer.setVisibility(View.GONE);
-        llPlayerFragmentContainerBlock.setVisibility(View.GONE);
-    }
-
-    private void resetDetailFallback() {
-        detailFallbackActive = false;
-        detailFallbackSearching = false;
-        detailFallbackSearchCollecting = false;
-        detailFallbackSearchTimedOut = false;
-        detailFallbackDetailTimedOut = false;
-        detailFallbackSearchTimeoutScheduled = false;
-        detailFallbackKeepCurrentDetail = false;
-        detailFallbackLoadingCandidate = false;
-        detailFallbackBatchIndex = 0;
-        detailFallbackNextSourceIndex = 0;
-        detailFallbackToken = "";
-        detailFallbackBatchToken = "";
-        detailFallbackTitle = "";
-        detailFallbackExcludedSourceKey = "";
-        detailFallbackSourceOrder.clear();
-        detailFallbackCandidates.clear();
-        detailFallbackPendingSources.clear();
-        detailFallbackCandidateKeys.clear();
-        detailFallbackTriedKeys.clear();
-        detailFallbackEpisode = null;
-        detailFallbackEpisodeIndex = -1;
-        if (llLayout != null) {
-            llLayout.removeCallbacks(detailFallbackTimeout);
-            llLayout.removeCallbacks(detailFallbackDetailTimeout);
-        }
-        stopDetailFallbackSearchExecutor();
-        OkGo.getInstance().cancelTag(DETAIL_FALLBACK_SEARCH_TAG);
-    }
-
-    private void stopDetailFallbackSearchExecutor() {
-        if (detailFallbackSearchExecutor != null) {
-            detailFallbackSearchExecutor.shutdownNow();
-            detailFallbackSearchExecutor = null;
-        }
-    }
 
     private boolean isFirstLoad = true;
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
         if (event.type == RefreshEvent.TYPE_REFRESH) {
             if (event.obj != null) {
-                if (event.obj instanceof VodInfo) {
-                    syncPlayingVodInfo((VodInfo) event.obj);
-                } else if (event.obj instanceof Integer) {
+                if (event.obj instanceof Integer) {
                     int index = (int) event.obj;
                     for (int j = 0; j < Objects.requireNonNull(vodInfo.seriesMap.get(vodInfo.playFlag)).size(); j++) {
                         seriesAdapter.getData().get(j).selected = false;
@@ -1523,7 +832,6 @@ public class DetailActivity extends BaseActivity {
                     seriesAdapter.notifyItemChanged(index);
                     if(!isFirstLoad)mGridView.setSelection(index);
                     vodInfo.playIndex = index;
-                    routeSwitchSeries = seriesAdapter.getData().get(index);
                     //保存历史
                     insertVod(firstsourceKey, vodInfo);
                     isFirstLoad = false;
@@ -1538,13 +846,9 @@ public class DetailActivity extends BaseActivity {
                 }
 
             }
-        } else if (event.type == RefreshEvent.TYPE_PLAY_QUALITY) {
-            updateQualityOptions(event.obj instanceof JSONObject ? (JSONObject) event.obj : null);
         } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_SELECT) {
             if (event.obj != null) {
                 Movie.Video video = (Movie.Video) event.obj;
-                vod_name = video.name;
-                vod_picture = video.pic;
                 loadDetail(video.id, video.sourceKey);
             }
         } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_WORD_CHANGE) {
@@ -1566,43 +870,6 @@ public class DetailActivity extends BaseActivity {
     private final List<Movie.Video> quickSearchData = new ArrayList<>();
     private final List<String> quickSearchWord = new ArrayList<>();
     private ExecutorService searchExecutorService = null;
-    private ExecutorService detailFallbackSearchExecutor;
-    private final List<String> detailFallbackSourceOrder = new ArrayList<>();
-    private final List<Movie.Video> detailFallbackCandidates = new ArrayList<>();
-    private final HashMap<String, List<Movie.Video>> detailFallbackCache = new HashMap<>();
-    private final HashMap<String, Set<String>> detailFallbackUsedSourceKeys = new HashMap<>();
-    private final Set<String> detailFallbackPendingSources = new HashSet<>();
-    private final Set<String> detailFallbackCandidateKeys = new HashSet<>();
-    private final Set<String> detailFallbackTriedKeys = new HashSet<>();
-    private VodInfo.VodSeries detailFallbackEpisode;
-    private int detailFallbackEpisodeIndex = -1;
-    private boolean detailFallbackActive;
-    private boolean detailFallbackSearching;
-    private boolean detailFallbackSearchCollecting;
-    private boolean detailFallbackSearchTimedOut;
-    private boolean detailFallbackDetailTimedOut;
-    private boolean detailFallbackSearchTimeoutScheduled;
-    private boolean detailFallbackKeepCurrentDetail;
-    private boolean detailFallbackLoadingCandidate;
-    private int detailFallbackRequestIndex;
-    private int detailFallbackBatchIndex;
-    private int detailFallbackNextSourceIndex;
-    private String detailFallbackToken = "";
-    private String detailFallbackBatchToken = "";
-    private String detailFallbackTitle = "";
-    private String detailFallbackExcludedSourceKey = "";
-    private final Runnable detailFallbackTimeout = new Runnable() {
-        @Override
-        public void run() {
-            finishDetailFallbackSearchOnTimeout();
-        }
-    };
-    private final Runnable detailFallbackDetailTimeout = new Runnable() {
-        @Override
-        public void run() {
-            finishDetailFallbackDetailOnTimeout();
-        }
-    };
 
     private void switchSearchWord(String word) {
         OkGo.getInstance().cancelTag("quick_search");
@@ -1705,182 +972,6 @@ public class DetailActivity extends BaseActivity {
         }
     }
 
-    private void syncPlayingVodInfo(VodInfo playingVodInfo) {
-        if (playingVodInfo == null || vodInfo == null || vodInfo.seriesMap == null) {
-            return;
-        }
-        String newFlag = playingVodInfo.playFlag;
-        if (TextUtils.isEmpty(newFlag) || !vodInfo.seriesMap.containsKey(newFlag)) {
-            return;
-        }
-        List<VodInfo.VodSeries> newSeriesList = vodInfo.seriesMap.get(newFlag);
-        if (newSeriesList == null || newSeriesList.isEmpty()) {
-            return;
-        }
-
-        String oldFlag = vodInfo.playFlag;
-        int oldIndex = vodInfo.playIndex;
-        boolean sameFlag = TextUtils.equals(oldFlag, newFlag);
-        VodInfo.VodSeries playingSeries = getPlayingSeries(playingVodInfo, newFlag);
-        int newIndex = findMatchingEpisodeIndex(playingSeries, newSeriesList);
-        vodInfo.playFlag = newFlag;
-        vodInfo.playIndex = newIndex;
-        if (playingVodInfo.playerCfg != null) {
-            vodInfo.playerCfg = playingVodInfo.playerCfg;
-        }
-
-        for (VodInfo.VodSeriesFlag flag : vodInfo.seriesFlags) {
-            flag.selected = flag.name.equals(newFlag);
-        }
-        for (List<VodInfo.VodSeries> seriesList : vodInfo.seriesMap.values()) {
-            if (seriesList == null) {
-                continue;
-            }
-            for (VodInfo.VodSeries series : seriesList) {
-                series.selected = false;
-            }
-        }
-        if (newIndex >= 0) {
-            newSeriesList.get(newIndex).selected = true;
-            routeSwitchSeries = newSeriesList.get(newIndex);
-        }
-
-        seriesFlagAdapter.notifyDataSetChanged();
-        if (sameFlag && newIndex >= 0 && oldIndex >= 0 && oldIndex < newSeriesList.size()) {
-            if (oldIndex != newIndex) {
-                seriesAdapter.notifyItemChanged(oldIndex);
-                seriesAdapter.notifyItemChanged(newIndex);
-            }
-        } else {
-            refreshList();
-        }
-        if (newIndex >= 0) {
-            setTvPlayUrl(newSeriesList.get(newIndex).url);
-        }
-
-        int flagIndex = -1;
-        for (int i = 0; i < vodInfo.seriesFlags.size(); i++) {
-            if (vodInfo.seriesFlags.get(i).name.equals(newFlag)) {
-                flagIndex = i;
-                break;
-            }
-        }
-        if (flagIndex >= 0) {
-            mGridViewFlag.scrollToPosition(flagIndex);
-            if (mGridViewFlag.hasFocus()) {
-                mGridViewFlag.setSelection(flagIndex);
-            }
-        }
-        if (!isFirstLoad && newIndex >= 0) {
-            mGridView.setSelection(newIndex);
-        }
-
-        insertVod(firstsourceKey, vodInfo);
-        isFirstLoad = false;
-    }
-
-    private VodInfo.VodSeries getPlayingSeries(VodInfo playingVodInfo, String flag) {
-        if (playingVodInfo == null || playingVodInfo.seriesMap == null || TextUtils.isEmpty(flag)) {
-            return null;
-        }
-        List<VodInfo.VodSeries> playingList = playingVodInfo.seriesMap.get(flag);
-        if (playingList == null || playingList.isEmpty()) {
-            return null;
-        }
-        int safeIndex = Math.max(0, Math.min(playingVodInfo.playIndex, playingList.size() - 1));
-        return playingList.get(safeIndex);
-    }
-
-    private boolean isCurrentPreviewPlaying(int position) {
-        if (!showPreview || previewVodInfo == null || vodInfo == null || vodInfo.seriesMap == null || TextUtils.isEmpty(vodInfo.playFlag)) {
-            return false;
-        }
-        if (!TextUtils.equals(vodInfo.playFlag, previewVodInfo.playFlag) || previewVodInfo.playIndex != position) {
-            return false;
-        }
-        List<VodInfo.VodSeries> currentList = vodInfo.seriesMap.get(vodInfo.playFlag);
-        if (currentList == null || position < 0 || position >= currentList.size()) {
-            return false;
-        }
-        VodInfo.VodSeries currentSeries = currentList.get(position);
-        VodInfo.VodSeries previewSeries = getPlayingSeries(previewVodInfo, previewVodInfo.playFlag);
-        return currentSeries != null && previewSeries != null && TextUtils.equals(currentSeries.url, previewSeries.url);
-    }
-
-    private int findSameEpisodeIndex(VodInfo.VodSeries currentSeries, List<VodInfo.VodSeries> targetList, int fallbackIndex) {
-        if (targetList == null || targetList.isEmpty()) {
-            return 0;
-        }
-        int matchedIndex = findMatchingEpisodeIndex(currentSeries, targetList);
-        return matchedIndex >= 0 ? matchedIndex : Math.max(0, Math.min(fallbackIndex, targetList.size() - 1));
-    }
-
-    private int findMatchingEpisodeIndex(VodInfo.VodSeries currentSeries, List<VodInfo.VodSeries> targetList) {
-        if (targetList == null || targetList.isEmpty()) {
-            return -1;
-        }
-        if (targetList.size() == 1) {
-            return 0;
-        }
-        if (currentSeries == null || TextUtils.isEmpty(currentSeries.name)) {
-            return -1;
-        }
-        int currentEpisode = extractEpisodeNumber(currentSeries.name);
-        int matchedIndex = -1;
-        int bestScore = 0;
-        for (int i = 0; i < targetList.size(); i++) {
-            VodInfo.VodSeries targetSeries = targetList.get(i);
-            int score = getEpisodeMatchScore(currentSeries.name, currentEpisode, targetSeries == null ? null : targetSeries.name);
-            if (score > bestScore) {
-                bestScore = score;
-                matchedIndex = i;
-            }
-        }
-        return matchedIndex;
-    }
-
-    private int getEpisodeMatchScore(String currentName, int currentEpisode, String targetName) {
-        if (TextUtils.isEmpty(currentName) || TextUtils.isEmpty(targetName)) {
-            return 0;
-        }
-        if (targetName.equalsIgnoreCase(currentName)) {
-            return 100;
-        }
-        if (currentEpisode >= 0 && extractEpisodeNumber(targetName) == currentEpisode) {
-            return 80;
-        }
-        String currentLower = currentName.toLowerCase(Locale.ROOT);
-        String targetLower = targetName.toLowerCase(Locale.ROOT);
-        if (currentEpisode < 0 && currentName.length() >= 2 && targetLower.contains(currentLower)) {
-            return 70;
-        }
-        if (currentEpisode < 0 && targetName.length() >= 2 && currentLower.contains(targetLower)) {
-            return 60;
-        }
-        return 0;
-    }
-
-    private int extractEpisodeNumber(String name) {
-        if (TextUtils.isEmpty(name)) {
-            return -1;
-        }
-        try {
-            String text = name.replaceAll("\\[.*?\\]|\\(.*?\\)", "");
-            text = text.replaceAll("\\b(19|20)\\d{2}\\b", "");
-            text = text.toLowerCase(Locale.ROOT).replaceAll("2160p|1080p|720p|480p|4k|h26[45]|x26[45]|mp4", "");
-            Matcher matcher = Pattern.compile("(?i)(?:ep|\\u7b2c|e|[\\-\\.\\s])\\s?(\\d{1,4})").matcher(text);
-            if (matcher.find()) {
-                return Integer.parseInt(matcher.group(1));
-            }
-            String number = text.replaceAll("\\D+", "");
-            if (!TextUtils.isEmpty(number)) {
-                return Integer.parseInt(number);
-            }
-        } catch (Exception ignored) {
-        }
-        return -1;
-    }
-
     private void insertVod(String sourceKey, VodInfo vodInfo) {
         try {
             vodInfo.playNote = vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex).name;
@@ -1893,7 +984,6 @@ public class DetailActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
-        resetDetailFallback();
         super.onDestroy();
         try {
             if (searchExecutorService != null) {
@@ -1906,14 +996,7 @@ public class DetailActivity extends BaseActivity {
         OkGo.getInstance().cancelTag("fenci");
         OkGo.getInstance().cancelTag("detail");
         OkGo.getInstance().cancelTag("quick_search");
-        releasePlayFragment();
         EventBus.getDefault().unregister(this);
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        outState.putBoolean(STATE_FULL_WINDOWS, fullWindows);
-        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -1921,40 +1004,25 @@ public class DetailActivity extends BaseActivity {
         if (fullWindows) {
             if (playFragment.onBackPressed())
                 return;
-            exitFullPreview();
+            toggleFullPreview();
+            List<VodInfo.VodSeries> list = vodInfo.seriesMap.get(vodInfo.playFlag);
+            assert list != null;
+            tvSeriesGroup.setVisibility(list.size()>1 ? View.VISIBLE : View.GONE);
+            mGridView.requestFocus();
             return;
         }
-        if (mGridView != null && mGridView.hasFocus()
-                && mGridViewFlag != null && mGridViewFlag.getVisibility() == View.VISIBLE) {
-            try {
-                if (seriesFlagFocus != null && seriesFlagFocus.isShown()
-                        && seriesFlagFocus.requestFocus()) {
-                    return;
-                }
-                if (mGridViewFlag.requestFocus()) {
-                    return;
-                }
-            } catch (Throwable th) {
-                th.printStackTrace();
+        if (seriesSelect) {
+            if (seriesFlagFocus != null && !seriesFlagFocus.isFocused()) {
+                seriesFlagFocus.requestFocus();
+                return;
             }
         }
-        if(showPreview && playFragment!=null){
-            try {
-                playFragment.setPlayTitle(false);
-                playFragment.setExitingPreview(true);
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-        }
+        if(showPreview && playFragment!=null)playFragment.setPlayTitle(false);
         super.onBackPressed();
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event != null && !fullWindows && event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
-            startDetailFallbackFromMenu();
-            return true;
-        }
         if (event != null && playFragment != null && fullWindows) {
             if (playFragment.dispatchKeyEvent(event)) {
                 return true;
@@ -1986,128 +1054,23 @@ public class DetailActivity extends BaseActivity {
     // preview
     VodInfo previewVodInfo = null;
     boolean fullWindows = false;
-    private int previewOrientation;
-    private boolean previewOrientationChanged;
     ViewGroup.LayoutParams windowsPreview = null;
     ViewGroup.LayoutParams windowsFull = null;
 
     void toggleFullPreview() {
-        setFullPreview(!fullWindows);
-    }
-
-    void enterFullPreview() {
-        setFullPreview(true);
-    }
-
-    void exitFullPreview() {
-        boolean needRefreshSeries = previewOrientationChanged;
-        setFullPreview(false);
-        previewOrientationChanged = false;
-        if (needRefreshSeries) {
-            refreshSeriesAfterFullPreview();
-        } else {
-            syncSeriesSelectionAfterFullPreview();
-        }
-    }
-
-    private void refreshSeriesAfterFullPreview() {
-        if (seriesAdapter == null || vodInfo == null || vodInfo.seriesMap == null || TextUtils.isEmpty(vodInfo.playFlag)) return;
-        if (vodInfo.seriesMap.get(vodInfo.playFlag) == null) return;
-        mGridView.post(new Runnable() {
-            @Override
-            public void run() {
-                mGridView.getRecycledViewPool().clear();
-                mGridView.setAdapter(seriesAdapter);
-                refreshList();
-            }
-        });
-    }
-
-    private void syncSeriesSelectionAfterFullPreview() {
-        if (seriesAdapter == null || vodInfo == null || vodInfo.seriesMap == null || TextUtils.isEmpty(vodInfo.playFlag)) return;
-        List<VodInfo.VodSeries> list = vodInfo.seriesMap.get(vodInfo.playFlag);
-        if (list == null || list.isEmpty()) return;
-        if (vodInfo.playIndex >= list.size()) {
-            vodInfo.playIndex = list.size() - 1;
-        }
-        setSeriesGroupOptions();
-        mGridView.post(new Runnable() {
-            @Override
-            public void run() {
-                int firstVisible = mGridView.getFirstVisiblePosition();
-                int lastVisible = mGridView.getLastVisiblePosition();
-                if (vodInfo.playIndex >= 0 && (vodInfo.playIndex < firstVisible || vodInfo.playIndex > lastVisible)) {
-                    customSeriesScrollPos(vodInfo.playIndex);
-                }
-            }
-        });
-        mSeriesGroupView.post(new Runnable() {
-            @Override
-            public void run() {
-                if (mSeriesGroupView.getVisibility() == View.VISIBLE) {
-                    mSeriesGroupView.scrollToPosition(selectedSeriesGroupPosition);
-                }
-            }
-        });
-    }
-
-    void setFullPreview(boolean full) {
         if (windowsPreview == null) {
             windowsPreview = llPlayerFragmentContainer.getLayoutParams();
         }
         if (windowsFull == null) {
             windowsFull = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         }
-        if (full) {
-            previewOrientation = getResources().getConfiguration().orientation;
-            previewOrientationChanged = false;
-        }
-        fullWindows = full;
-        if (playFragment != null) {
-            playFragment.setAutoSwitchLineEnabled(!fullWindows);
-            playFragment.setPreviewMode(!fullWindows);
-        }
-        llPlayerFragmentContainer.setVisibility(fullWindows || showPreview ? View.VISIBLE : View.GONE);
+        fullWindows = !fullWindows;
         llPlayerFragmentContainer.setLayoutParams(fullWindows ? windowsFull : windowsPreview);
-        setPreviewRoundClip(!fullWindows);
-        llPlayerFragmentContainerBlock.setVisibility(!fullWindows && showPreview ? View.VISIBLE : View.GONE);
+        llPlayerFragmentContainerBlock.setVisibility(fullWindows ? View.GONE : View.VISIBLE);
         mGridView.setVisibility(fullWindows ? View.GONE : View.VISIBLE);
         mGridViewFlag.setVisibility(fullWindows ? View.GONE : View.VISIBLE);
-        if (fullWindows) {
-            tvSeriesGroup.setVisibility(View.GONE);
-        } else {
-            List<VodInfo.VodSeries> list = vodInfo == null || vodInfo.seriesMap == null || TextUtils.isEmpty(vodInfo.playFlag) ? null : vodInfo.seriesMap.get(vodInfo.playFlag);
-            tvSeriesGroup.setVisibility(list != null && list.size() > 1 ? View.VISIBLE : View.GONE);
-            seriesFlagAdapter.notifyDataSetChanged();
-            if (showPreview) mGridView.requestFocus();
-            else {
-                if (playFragment != null) playFragment.pauseForHidden();
-                mGridView.requestFocus();
-            }
-        }
+        tvSeriesGroup.setVisibility(fullWindows ? View.GONE : View.VISIBLE);
         toggleSubtitleTextSize();
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        if (fullWindows && newConfig.orientation != previewOrientation) {
-            previewOrientation = newConfig.orientation;
-            previewOrientationChanged = true;
-        }
-    }
-
-    void ensurePlayFragment() {
-        if (playFragment != null) return;
-        playFragment = new PlayFragment();
-        getSupportFragmentManager().beginTransaction().add(R.id.previewPlayer, playFragment).commitNowAllowingStateLoss();
-        playFragment.setPreviewMode(!fullWindows);
-    }
-
-    void releasePlayFragment() {
-        if (playFragment == null) return;
-        getSupportFragmentManager().beginTransaction().remove(playFragment).commitNowAllowingStateLoss();
-        playFragment = null;
     }
 
     void toggleSubtitleTextSize() {
@@ -2116,10 +1079,6 @@ public class DetailActivity extends BaseActivity {
             subtitleTextSize *= 0.6;
         }
         EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SUBTITLE_SIZE_CHANGE, subtitleTextSize));
-    }
-
-    public PlayFragment getPlayFragment() {
-        return playFragment;
     }
 
     private void setTvPlayUrl(String url)

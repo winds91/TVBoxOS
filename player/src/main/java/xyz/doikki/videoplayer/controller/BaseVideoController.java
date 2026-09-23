@@ -324,8 +324,8 @@ public abstract class BaseVideoController extends FrameLayout
     };
 
     private int setProgress() {
-        int position = PlayerUtils.safeTimeMs(mControlWrapper.getCurrentPosition());
-        int duration = PlayerUtils.safeTimeMs(mControlWrapper.getDuration());
+        int position = (int) mControlWrapper.getCurrentPosition();
+        int duration = (int) mControlWrapper.getDuration();
         handleSetProgress(duration, position);
         return position;
     }

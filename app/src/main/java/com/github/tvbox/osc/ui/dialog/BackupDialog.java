@@ -97,8 +97,8 @@ public class BackupDialog extends BaseDialog {
     List<String> allBackup() {
         ArrayList<String> result = new ArrayList<>();
         try {
-            String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-            File file = new File(root + "/tvbox_backup/");
+            File root = Environment.getExternalStorageDirectory();
+            File file = new File(root, "tvbox_backup/");
             File[] list = file.listFiles();
             Arrays.sort(list, new Comparator<File>() {
                 @Override
@@ -126,8 +126,8 @@ public class BackupDialog extends BaseDialog {
 
     void restore(String dir) {
         try {
-            String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-            File backup = new File(root + "/tvbox_backup/" + dir);
+            File root = Environment.getExternalStorageDirectory();
+            File backup = new File(root, "tvbox_backup/" + dir);
             if (backup.exists()) {
                 File db = new File(backup, "sqlite");
                 if (AppDataManager.restore(db)) {
@@ -177,8 +177,8 @@ public class BackupDialog extends BaseDialog {
     }
     void backup() {
         try {
-            String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-            File file = new File(root + "/tvbox_backup/");
+            File root = Environment.getExternalStorageDirectory();
+            File file = new File(root, "tvbox_backup/");
             if (!file.exists())
                 file.mkdirs();
             Date now = new Date();

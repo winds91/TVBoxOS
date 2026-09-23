@@ -6,11 +6,7 @@ import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
-import com.github.tvbox.osc.bean.ProxyRule;
-import com.github.tvbox.osc.player.danmu.Parser;
 import com.github.tvbox.osc.picasso.MyOkhttpDownLoader;
-import com.github.tvbox.osc.util.net.OkProxySelector;
-import com.github.tvbox.osc.util.net.ProxyAuthenticator;
 import com.github.tvbox.osc.util.SSL.SSLSocketFactoryCompat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -52,7 +48,7 @@ import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 
 
 public class OkGoHelper {
-    public static final long DEFAULT_MILLISECONDS = 20000;      //默认的超时时间
+    public static final long DEFAULT_MILLISECONDS = 10000;      //默认的超时时间
 
     // 内置doh json
     private static final String dnsConfigJson = "["
@@ -61,28 +57,8 @@ public class OkGoHelper {
             + "{\"name\": \"360\", \"url\": \"https://doh.360.cn/dns-query\"}"
             + "]";
     static OkHttpClient ItvClient = null;
-    private static OkProxySelector proxySelector = null;
-    private static ProxyAuthenticator proxyAuthenticator = null;
-
-    public static synchronized OkProxySelector proxySelector() {
-        if (proxySelector == null) proxySelector = new OkProxySelector();
-        return proxySelector;
-    }
-
-    public static synchronized ProxyAuthenticator proxyAuthenticator() {
-        if (proxyAuthenticator == null) proxyAuthenticator = new ProxyAuthenticator(proxySelector());
-        return proxyAuthenticator;
-    }
-
-    public static synchronized void setProxyList(List<ProxyRule> proxyRules) {
-        proxySelector().clear();
-        if (proxyRules != null && !proxyRules.isEmpty()) proxySelector().addAll(proxyRules);
-        com.github.catvod.net.OkHttp.reset();
-    }
-
     static void initExoOkHttpClient() {
-        OkHttpClient base = getDefaultClient();
-        OkHttpClient.Builder builder = base != null ? base.newBuilder() : new OkHttpClient.Builder();
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkExoPlayer");
 
         if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
@@ -97,8 +73,6 @@ public class OkGoHelper {
         builder.retryOnConnectionFailure(true);
         builder.followRedirects(true);
         builder.followSslRedirects(true);
-        builder.proxySelector(proxySelector());
-        builder.proxyAuthenticator(proxyAuthenticator());
 
 
         try {
@@ -108,7 +82,7 @@ public class OkGoHelper {
         }
 
 //        builder.dns(dnsOverHttps);
-        builder.dns(new CustomDns());
+        builder.dns(new CustomDns(dnsOverHttps));
         ItvClient=builder.build();
 
         ExoMediaSourceHelper.getInstance(App.getInstance()).setOkClient(ItvClient);
@@ -144,7 +118,7 @@ public class OkGoHelper {
             dnsHttpsList.add(name);
         }
         if(Hawk.get(HawkConfig.DOH_URL, 0)+1>dnsHttpsList.size())Hawk.put(HawkConfig.DOH_URL, 0);
-        myHosts = ApiConfig.get().getMyHost();
+
     }
 
     private static List<InetAddress> DohIps(JsonArray ips) {
@@ -166,15 +140,11 @@ public class OkGoHelper {
         Integer dohSelector=Hawk.get(HawkConfig.DOH_URL, 0);
         JsonArray ips=null;
         try {
-            dnsHttpsList.clear();
             dnsHttpsList.add("关闭");
             String json=Hawk.get(HawkConfig.DOH_JSON,"");
             if(json.isEmpty())json=dnsConfigJson;
             JsonArray jsonArray = JsonParser.parseString(json).getAsJsonArray();
-            if(dohSelector>jsonArray.size()) {
-                Hawk.put(HawkConfig.DOH_URL, 0);
-                dohSelector = 0;
-            }
+            if(dohSelector+1>jsonArray.size())Hawk.put(HawkConfig.DOH_URL, 0);
             for (int i = 0; i < jsonArray.size(); i++) {
                 JsonObject dnsConfig = jsonArray.get(i).getAsJsonObject();
                 String name = dnsConfig.has("name") ? dnsConfig.get("name").getAsString() : "Unknown Name";
@@ -186,8 +156,6 @@ public class OkGoHelper {
         }
 
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        builder.proxySelector(proxySelector());
-        builder.proxyAuthenticator(proxyAuthenticator());
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkExoPlayer");
         if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
             loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
@@ -202,7 +170,7 @@ public class OkGoHelper {
         } catch (Throwable th) {
             th.printStackTrace();
         }
-        builder.cache(new Cache(new File(App.getInstance().getCacheDir().getAbsolutePath(), "dohcache"), 100 * 1024 * 1024));
+        builder.cache(new Cache(new File(App.getInstance().getCacheDir(), "dohcache"), 100 * 1024 * 1024));
         OkHttpClient dohClient = builder.build();
         String dohUrl = getDohUrl(Hawk.get(HawkConfig.DOH_URL, 0));
 //        if (!dohUrl.isEmpty()) is_doh = true;
@@ -215,26 +183,27 @@ public class OkGoHelper {
     static class CustomDns implements Dns {
         private  ConcurrentHashMap<String, List<InetAddress>> map;
         private final String excludeIps = "2409:8087:6c02:14:100::14,2409:8087:6c02:14:100::18,39.134.108.253,39.134.108.245";
+        private final DnsOverHttps mDnsOverHttps;
 
         // 接收外部注入的 DoH 实例
-        public CustomDns() {
+        public CustomDns(DnsOverHttps dnsOverHttps) {
+            this.mDnsOverHttps = dnsOverHttps;
         }
         @NonNull
         @Override
         public List<InetAddress> lookup(@NonNull String hostname) throws UnknownHostException {
-            String originalHost = hostname;
-            Map<String, String> hosts = myHosts;
-            if (hosts == null) hosts = ApiConfig.get().getMyHost();
-            if(hosts != null && !hosts.isEmpty() && hosts.containsKey(hostname)) {
-                hostname=hosts.get(hostname);
+            if (myHosts == null){
+                myHosts = ApiConfig.get().getMyHost(); //确保只获取一次减少消耗
+            }
+            if(!myHosts.isEmpty() && myHosts.containsKey(hostname)) {
+                hostname=myHosts.get(hostname);
             }
             assert hostname != null;
             if (isValidIpAddress(hostname)) {
                 return Collections.singletonList(InetAddress.getByName(hostname));
             }
             else {
-                Dns dns = dnsOverHttps != null ? dnsOverHttps : Dns.SYSTEM;
-                return  dns.lookup(hostname);
+                return  mDnsOverHttps.lookup(hostname);
             }
         }
 
@@ -304,10 +273,6 @@ public class OkGoHelper {
         return noRedirectClient;
     }
 
-    public static OkHttpClient getItvClient() {
-        return ItvClient;
-    }
-
     public static void init() {
         initDnsOverHttps();
 
@@ -330,9 +295,7 @@ public class OkGoHelper {
         builder.writeTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
         builder.connectTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
 
-        builder.dns(new CustomDns());
-        builder.proxySelector(proxySelector());
-        builder.proxyAuthenticator(proxyAuthenticator());
+        builder.dns(dnsOverHttps);
         try {
             setOkHttpSsl(builder);
         } catch (Throwable th) {
@@ -352,51 +315,6 @@ public class OkGoHelper {
 
         initExoOkHttpClient();
         initPicasso(okHttpClient);
-    }
-
-    public static synchronized void reloadDns() {
-        initDnsOverHttps();
-
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkGo");
-
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
-            loggingInterceptor.setColorLevel(Level.INFO);
-        } else {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.NONE);
-            loggingInterceptor.setColorLevel(Level.OFF);
-        }
-
-        builder.addInterceptor(loggingInterceptor);
-
-        builder.readTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
-        builder.writeTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
-        builder.connectTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
-
-        builder.dns(new CustomDns());
-        builder.proxySelector(proxySelector());
-        builder.proxyAuthenticator(proxyAuthenticator());
-        try {
-            setOkHttpSsl(builder);
-        } catch (Throwable th) {
-            th.printStackTrace();
-        }
-
-        HttpHeaders.setUserAgent(Version.userAgent());
-
-        OkHttpClient okHttpClient = builder.build();
-        OkGo.getInstance().setOkHttpClient(okHttpClient);
-
-        defaultClient = okHttpClient;
-
-        builder.followRedirects(false);
-        builder.followSslRedirects(false);
-        noRedirectClient = builder.build();
-
-        initExoOkHttpClient();
-        Parser.resetHttpClient();
-        com.github.catvod.net.OkHttp.resetClient();
     }
 
     static void initPicasso(OkHttpClient client) {

@@ -65,11 +65,8 @@ public class App extends MultiDexApplication {
         // Hawk
         Hawk.init(this).build();
         Hawk.put(HawkConfig.DEBUG_OPEN, false);
-        Hawk.put(HawkConfig.PLAYER_IS_LIVE, false);
         if (!Hawk.contains(HawkConfig.PLAY_TYPE)) {
-            Hawk.put(HawkConfig.PLAY_TYPE, 2);
-        } else if (Hawk.get(HawkConfig.PLAY_TYPE, 2) == 0) {
-            Hawk.put(HawkConfig.PLAY_TYPE, 2);
+            Hawk.put(HawkConfig.PLAY_TYPE, 1);
         }
     }
 

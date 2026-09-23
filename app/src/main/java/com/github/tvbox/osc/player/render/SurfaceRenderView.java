@@ -41,10 +41,6 @@ public class SurfaceRenderView extends SurfaceView implements IRenderView, Surfa
     @Override
     public void attachToPlayer(@NonNull AbstractPlayer player) {
         this.mMediaPlayer = player;
-        SurfaceHolder holder = getHolder();
-        if (holder.getSurface() != null && holder.getSurface().isValid()) {
-            player.setDisplay(holder);
-        }
     }
 
     @Override
@@ -90,9 +86,7 @@ public class SurfaceRenderView extends SurfaceView implements IRenderView, Surfa
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.setDisplay(holder);
-        }
+
     }
 
     @Override
@@ -104,8 +98,6 @@ public class SurfaceRenderView extends SurfaceView implements IRenderView, Surfa
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.setDisplay(null);
-        }
+
     }
 }

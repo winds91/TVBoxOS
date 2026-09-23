@@ -49,11 +49,6 @@ public class HistoryActivity extends BaseActivity {
     }
 
     @Override
-    protected boolean shouldRefreshAutoSize() {
-        return true;
-    }
-
-    @Override
     protected void init() {
         initView();
         initData();
@@ -133,12 +128,11 @@ public class HistoryActivity extends BaseActivity {
                         bundle.putString("sourceKey", vodInfo.sourceKey);
                         SourceBean sourceBean = ApiConfig.get().getSource(vodInfo.sourceKey);
                         if(sourceBean!=null){
-                            bundle.putString("title", vodInfo.name);
                             bundle.putString("picture", vodInfo.pic);
                             jumpActivity(DetailActivity.class, bundle);
                         }else {
                             bundle.putString("title", vodInfo.name);
-                            if(Hawk.get(HawkConfig.FAST_SEARCH_MODE, true)){
+                            if(Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)){
                                 jumpActivity(FastSearchActivity.class, bundle);
                             }else {
                                 jumpActivity(SearchActivity.class, bundle);
@@ -151,16 +145,8 @@ public class HistoryActivity extends BaseActivity {
         historyAdapter.setOnItemLongClickListener(new BaseQuickAdapter.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(BaseQuickAdapter adapter, View view, int position) {
-                VodInfo vodInfo = historyAdapter.getData().get(position);
-                if (vodInfo != null) {
-                    Bundle bundle = new Bundle();
-                    bundle.putString("title", vodInfo.name);
-                    if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, true)) {
-                        jumpActivity(FastSearchActivity.class, bundle);
-                    } else {
-                        jumpActivity(SearchActivity.class, bundle);
-                    }
-                }
+                tvDelete.setFocusable(true);
+                toggleDelMode();
                 return true;
             }
         });

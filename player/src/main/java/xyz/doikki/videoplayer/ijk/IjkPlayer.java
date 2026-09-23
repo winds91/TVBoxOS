@@ -15,10 +15,8 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
-import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 import xyz.doikki.videoplayer.player.AbstractPlayer;
 import xyz.doikki.videoplayer.player.VideoViewManager;
-import xyz.doikki.videoplayer.util.PlayerUtils;
 
 public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorListener,
         IMediaPlayer.OnCompletionListener, IMediaPlayer.OnInfoListener,
@@ -63,7 +61,6 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
             } else {
                 //处理UA问题
                 if (headers != null) {
-                    headers.remove(ExoMediaSourceHelper.HEADER_FORMAT);
                     String userAgent = headers.get("User-Agent");
                     if (!TextUtils.isEmpty(userAgent)) {
                         mMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "user_agent", userAgent);
@@ -138,7 +135,7 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
     @Override
     public void seekTo(long time) {
         try {
-            mMediaPlayer.seekTo(PlayerUtils.safeTimeMs(time));
+            mMediaPlayer.seekTo((int) time);
         } catch (IllegalStateException e) {
             mPlayerEventListener.onError();
         }
@@ -238,16 +235,6 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
 
     @Override
     public void onPrepared(IMediaPlayer mp) {
-        long startPosition = getStartPosition();
-        if (startPosition > 0) {
-            try {
-                mMediaPlayer.seekTo(PlayerUtils.safeTimeMs(startPosition));
-            } catch (IllegalStateException e) {
-                mPlayerEventListener.onError();
-                return;
-            }
-        }
-        markStartPositionApplied();
         mPlayerEventListener.onPrepared();
         // 修复播放纯音频时状态出错问题
         if (!isVideo()) {

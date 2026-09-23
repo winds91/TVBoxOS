@@ -1,7 +1,6 @@
 package com.github.catvod.crawler;
 
 import android.util.Log;
-
 import com.github.catvod.crawler.python.IPyLoader;
 
 import java.util.Map;
@@ -10,34 +9,28 @@ public class pyLoader implements IPyLoader {
 
     @Override
     public void clear() {
-        Log.i("PyLoader", "java flavor: clear() called, Python is not supported.");
+        Log.i("PyLoader", "normal flavor: clear() 调用，但不支持 Python 功能。");
     }
 
     @Override
     public void setConfig(String jsonStr) {
-        Log.i("PyLoader", "java flavor: setConfig() called, Python is not supported.");
+        Log.i("PyLoader", "normal flavor: setConfig() 调用，但不支持 Python 功能。");
     }
 
     @Override
-    public void setRecentPyKey(String key) {
-        Log.i("PyLoader", "java flavor: setRecentPyKey() called, Python is not supported.");
+    public void setRecentPyKey(String pyApi) {
+        Log.i("PyLoader", "normal flavor: setRecentPyKey() 调用，但不支持 Python 功能。");
     }
 
     @Override
     public Spider getSpider(String key, String cls, String ext) {
-        Log.i("PyLoader", "java flavor: getSpider() called, Python is not supported.");
+        Log.i("PyLoader", "normal flavor: getSpider() 调用，但不支持 Python 功能。");
         return new SpiderNull();
     }
 
     @Override
     public Object[] proxyInvoke(Map<String, String> params) {
-        Log.i("PyLoader", "java flavor: proxyInvoke(params) called, Python is not supported.");
-        return null;
-    }
-
-    @Override
-    public Object[] proxyInvoke(Map<String, String> params, String key) {
-        Log.i("PyLoader", "java flavor: proxyInvoke(params, key) called, Python is not supported.");
+        Log.i("PyLoader", "normal flavor: proxyInvoke(params) 调用，但不支持 Python 功能。");
         return null;
     }
 }

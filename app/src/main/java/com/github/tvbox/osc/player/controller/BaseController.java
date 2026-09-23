@@ -33,7 +33,7 @@ public abstract class BaseController extends BaseVideoController implements Gest
     private boolean mIsGestureEnabled = true;
     private int mStreamVolume;
     private float mBrightness;
-    private int mSeekPosition = -1;
+    private int mSeekPosition;
     private boolean mFirstTouch;
     private boolean mChangePosition;
     private boolean mChangeBrightness;
@@ -118,7 +118,6 @@ public abstract class BaseController extends BaseVideoController implements Gest
         super.onPlayStateChanged(playState);
         switch (playState) {
             case VideoView.STATE_IDLE:
-                mPauseRoot.setVisibility(GONE);
                 mLoading.setVisibility(GONE);
                 break;
             case VideoView.STATE_PLAYING:
@@ -132,12 +131,10 @@ public abstract class BaseController extends BaseVideoController implements Gest
             case VideoView.STATE_PREPARED:
             case VideoView.STATE_ERROR:
             case VideoView.STATE_BUFFERED:
-                mPauseRoot.setVisibility(GONE);
                 mLoading.setVisibility(GONE);
                 break;
             case VideoView.STATE_PREPARING:
             case VideoView.STATE_BUFFERING:
-                mPauseRoot.setVisibility(GONE);
                 mLoading.setVisibility(VISIBLE);
                 break;
             case VideoView.STATE_PLAYBACK_COMPLETED:
@@ -175,18 +172,6 @@ public abstract class BaseController extends BaseVideoController implements Gest
         mIsDoubleTapTogglePlayEnabled = enabled;
     }
 
-    public void hidePauseRoot() {
-        if (mPauseRoot != null) {
-            mPauseRoot.setVisibility(GONE);
-        }
-    }
-
-    public void showPauseRoot() {
-        if (mPauseRoot != null) {
-            mPauseRoot.setVisibility(VISIBLE);
-        }
-    }
-
     @Override
     public void setPlayerState(int playerState) {
         super.setPlayerState(playerState);
@@ -211,14 +196,6 @@ public abstract class BaseController extends BaseVideoController implements Gest
                 && mCurPlayState != VideoView.STATE_PREPARED
                 && mCurPlayState != VideoView.STATE_START_ABORT
                 && mCurPlayState != VideoView.STATE_PLAYBACK_COMPLETED;
-    }
-
-    protected boolean canHandleGesture(MotionEvent event) {
-        return isInPlaybackState()
-                && mIsGestureEnabled
-                && mCanSlide
-                && !isLocked()
-                && !PlayerUtils.isEdge(getContext(), event);
     }
 
     @Override
@@ -274,7 +251,12 @@ public abstract class BaseController extends BaseVideoController implements Gest
      */
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-        if (!canHandleGesture(e1)) return true;
+        if (!isInPlaybackState() //不处于播放状态
+                || !mIsGestureEnabled //关闭了手势
+                || !mCanSlide //关闭了滑动手势
+                || isLocked() //锁住了屏幕
+                || PlayerUtils.isEdge(getContext(), e1)) //处于屏幕边沿
+            return true;
         float deltaX = e1.getX() - e2.getX();
         float deltaY = e1.getY() - e2.getY();
         if (mFirstTouch) {
@@ -317,8 +299,8 @@ public abstract class BaseController extends BaseVideoController implements Gest
     protected void slideToChangePosition(float deltaX) {
         deltaX = -deltaX;
         int width = getMeasuredWidth();
-        int duration = PlayerUtils.safeTimeMs(mControlWrapper.getDuration());
-        int currentPosition = PlayerUtils.safeTimeMs(mControlWrapper.getCurrentPosition());
+        int duration = (int) mControlWrapper.getDuration();
+        int currentPosition = (int) mControlWrapper.getCurrentPosition();
         int position = (int) (deltaX / width * 120000 + currentPosition);
         if (position > duration) position = duration;
         if (position < 0) position = 0;
@@ -396,14 +378,14 @@ public abstract class BaseController extends BaseVideoController implements Gest
             switch (action) {
                 case MotionEvent.ACTION_UP:
                     stopSlide();
-                    if (mSeekPosition >= 0) {
+                    if (mSeekPosition > 0) {
                         mControlWrapper.seekTo(mSeekPosition);
-                        mSeekPosition = -1;
+                        mSeekPosition = 0;
                     }
                     break;
                 case MotionEvent.ACTION_CANCEL:
                     stopSlide();
-                    mSeekPosition = -1;
+                    mSeekPosition = 0;
                     break;
             }
         }
