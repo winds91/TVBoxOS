@@ -5,7 +5,6 @@ import android.text.TextUtils;
 
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
-import com.github.tvbox.osc.util.AudioTrackMemory;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
@@ -13,27 +12,19 @@ import com.github.tvbox.osc.util.MD5;
 import com.orhanobut.hawk.Hawk;
 
 import java.io.File;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import tv.danmaku.ijk.media.player.IMediaPlayer;
-import tv.danmaku.ijk.media.player.misc.ITrackInfo;
-import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 import xyz.doikki.videoplayer.ijk.IjkPlayer;
 
 public class IjkMediaPlayer extends IjkPlayer {
 
-    private IJKCode codec = null;
+    private final IJKCode codec;
     protected String currentPlayPath;
-    private static AudioTrackMemory memory;
 
     public IjkMediaPlayer(Context context, IJKCode codec) {
         super(context);
         this.codec = codec;
-        memory = AudioTrackMemory.getInstance(context);
     }
 
     @Override
@@ -83,7 +74,6 @@ public class IjkMediaPlayer extends IjkPlayer {
 //        mMediaPlayer.setOption(tv.danmaku.ijk.media.player.IjkMediaPlayer.OPT_CATEGORY_PLAYER, "sync-av-start", 1);//强制音画同步
     }
 
-    private static final String ITV_TARGET_DOMAIN = "gslbserv.itv.cmvideo.cn";
     @Override
     public void setDataSource(String path, Map<String, String> headers) {
         try {
@@ -181,74 +171,4 @@ public class IjkMediaPlayer extends IjkPlayer {
         }
     }
 
-    public TrackInfo getTrackInfo() {
-        IjkTrackInfo[] trackInfo = mMediaPlayer.getTrackInfo();
-        if (trackInfo == null) return null;
-        TrackInfo data = new TrackInfo();
-        int subtitleSelected = mMediaPlayer.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT);
-        int audioSelected = mMediaPlayer.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO);
-        int index = 0;
-        for (IjkTrackInfo info : trackInfo) {
-            if (info.getTrackType() == ITrackInfo.MEDIA_TRACK_TYPE_AUDIO) {//音轨信息
-                TrackInfoBean a = new TrackInfoBean();
-                String name = processAudioName(info.getInfoInline());
-                a.language = info.getLanguage();
-                if(name.startsWith("aac"))a.language="中文";
-                a.name = name;
-                a.index = index;
-                a.selected = index == audioSelected;
-                // 如果需要，还可以检查轨道的描述或标题以获取更多信息
-                data.addAudio(a);
-            }
-            else if (info.getTrackType() == ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT) {//内置字幕
-                TrackInfoBean t = new TrackInfoBean();
-                t.name = info.getInfoInline();
-                t.language = info.getLanguage();
-                t.index = index;
-                t.selected = index == subtitleSelected;
-                data.addSubtitle(t);
-            }
-            index++;
-        }
-        return data;
-    }
-    // 处理音轨名称格式
-    private String processAudioName(String rawName) {
-        return rawName.replace("AUDIO,", "")
-                .replace("N/A,", "")
-                .replace(" ", "");
-    }
-
-    public void setTrack(int trackIndex) {
-        int audioSelected = mMediaPlayer.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO);
-        int subtitleSelected = mMediaPlayer.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT);
-        if (trackIndex!=audioSelected && trackIndex!=subtitleSelected){
-            mMediaPlayer.selectTrack(trackIndex);
-        }
-    }
-    public void setTrack(int trackIndex,String playKey) {
-        int audioSelected = mMediaPlayer.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO);
-        if (trackIndex!=audioSelected){
-            if (!playKey.isEmpty()) {
-                memory.save(playKey, trackIndex);
-            }
-            mMediaPlayer.selectTrack(trackIndex);
-        }
-    }
-
-    public void setOnTimedTextListener(IMediaPlayer.OnTimedTextListener listener) {
-        mMediaPlayer.setOnTimedTextListener(listener);
-    }
-
-    public void loadDefaultTrack(TrackInfo trackInfo,String playKey) {
-        if(trackInfo!=null && trackInfo.getAudio().size()>1){
-            Integer trackIndex = memory.ijkLoad(playKey);
-            if (trackIndex == -1) {
-                int firsIndex=trackInfo.getAudio().get(0).index;
-                setTrack(firsIndex);
-                return;
-            };
-            setTrack(trackIndex);
-        }
-    }
 }

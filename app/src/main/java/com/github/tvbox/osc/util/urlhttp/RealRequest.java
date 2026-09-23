@@ -9,7 +9,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -132,7 +131,7 @@ import java.util.Map;
     /**
      * 上传文件时设置Connection参数
      */
-    private void setConnection(HttpURLConnection conn) throws ProtocolException {
+    private void setConnection(HttpURLConnection conn) {
         conn.setDoOutput(true);
         conn.setDoInput(true);
         conn.setUseCaches(false);
@@ -150,12 +149,12 @@ import java.util.Map;
             strBuf.append(TWO_HYPHENS);
             strBuf.append(BOUNDARY);
             strBuf.append(LINE_END);
-            strBuf.append("Content-Disposition: form-data; name=\"" + key + "\"");
+            strBuf.append("Content-Disposition: form-data; name=\"").append(key).append("\"");
             strBuf.append(LINE_END);
 
             strBuf.append("Content-Type: " + "text/plain" );
             strBuf.append(LINE_END);
-            strBuf.append("Content-Lenght: "+paramsMap.get(key).length());
+            strBuf.append("Content-Lenght: ").append(paramsMap.get(key).length());
             strBuf.append(LINE_END);
             strBuf.append(LINE_END);
             strBuf.append(paramsMap.get(key));
@@ -181,12 +180,7 @@ import java.util.Map;
             sum = sum + length;
             if(callBack != null){
                 final long finalSum = sum;
-                CallBackUtil.mMainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        callBack.onProgress(finalSum * 100.0f / total,total);
-                    }
-                });
+                CallBackUtil.mMainHandler.post(() -> callBack.onProgress(finalSum * 100.0f / total,total));
             }
         }
         outputStream.flush();

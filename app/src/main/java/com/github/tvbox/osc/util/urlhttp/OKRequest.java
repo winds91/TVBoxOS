@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.Map;
 
 import okhttp3.Call;
-import okhttp3.Callback;
 import okhttp3.FormBody;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -110,23 +109,5 @@ class OKRequest {
                 mCallBack.onError(call, e);
             }
         }
-    }
-
-    void call(OkHttpClient client) {
-        client.newCall(mOkHttpRequest).enqueue(new Callback() {
-            @Override
-            public void onFailure(final Call call, final IOException e) {
-                if (mCallBack != null) {
-                    mCallBack.onError(call, e);
-                }
-            }
-
-            @Override
-            public void onResponse(final Call call, final Response response) throws IOException {
-                if (mCallBack != null) {
-                    mCallBack.onSuccess(call, response);
-                }
-            }
-        });
     }
 }

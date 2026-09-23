@@ -15,9 +15,9 @@
  */
 package okhttp3.dnsoverhttps;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -38,7 +38,6 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.internal.Util;
 import okhttp3.internal.platform.Platform;
 import okhttp3.internal.publicsuffix.PublicSuffixDatabase;
 import okio.ByteString;
@@ -123,8 +122,9 @@ public class DnsOverHttps implements Dns {
         return resolvePublicAddresses;
     }
 
+    @NonNull
     @Override
-    public List<InetAddress> lookup(String hostname) throws UnknownHostException {
+    public List<InetAddress> lookup(@NonNull String hostname) throws UnknownHostException {
         if (this.url == null)
             return Dns.SYSTEM.lookup(hostname);
         if (!resolvePrivateAddresses || !resolvePublicAddresses) {
@@ -139,21 +139,6 @@ public class DnsOverHttps implements Dns {
             }
         }
         return lookupHttps(hostname);
-    }
-
-    public byte[] lookupHttpsForwardSync(String hostname) throws Throwable {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try {
-            byteArrayOutputStream.write(executeRequestsSync(hostname, DnsRecordCodec.TYPE_A));
-        } finally {
-
-        }
-        try {
-            byteArrayOutputStream.write(executeRequestsSync(hostname, DnsRecordCodec.TYPE_AAAA));
-        } finally {
-
-        }
-        return byteArrayOutputStream.toByteArray();
     }
 
     private List<InetAddress> lookupHttps(String hostname) throws UnknownHostException {
@@ -188,16 +173,6 @@ public class DnsOverHttps implements Dns {
         }
     }
 
-    private byte[] executeRequestsSync(String hostname, int type) throws IOException {
-        Request request = buildRequest(hostname, type);
-        Response response = getCacheOnlyResponse(request);
-
-        if (response == null) {
-            response = client.newCall(request).execute();
-        }
-        return response.body().bytes();
-    }
-
     private void executeRequests(final String hostname, List<Call> networkRequests,
                                  final List<InetAddress> responses, final List<Exception> failures) {
         final CountDownLatch latch = new CountDownLatch(networkRequests.size());
@@ -205,7 +180,7 @@ public class DnsOverHttps implements Dns {
         for (Call call : networkRequests) {
             call.enqueue(new Callback() {
                 @Override
-                public void onFailure(Call call, IOException e) {
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
                     synchronized (failures) {
                         failures.add(e);
                     }
@@ -213,7 +188,7 @@ public class DnsOverHttps implements Dns {
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) {
+                public void onResponse(@NonNull Call call, @NonNull Response response) {
                     processResponse(response, hostname, responses, failures);
                     latch.countDown();
                 }
@@ -239,28 +214,6 @@ public class DnsOverHttps implements Dns {
                 failures.add(e);
             }
         }
-    }
-
-    private List<InetAddress> throwBestFailure(String hostname, List<Exception> failures)
-            throws UnknownHostException {
-        if (failures.size() == 0) {
-            throw new UnknownHostException(hostname);
-        }
-
-        Exception failure = failures.get(0);
-
-        if (failure instanceof UnknownHostException) {
-            throw (UnknownHostException) failure;
-        }
-
-        UnknownHostException unknownHostException = new UnknownHostException(hostname);
-        unknownHostException.initCause(failure);
-
-        for (int i = 1; i < failures.size(); i++) {
-            Util.addSuppressedIfPossible(unknownHostException, failures.get(i));
-        }
-
-        throw unknownHostException;
     }
 
     private @Nullable

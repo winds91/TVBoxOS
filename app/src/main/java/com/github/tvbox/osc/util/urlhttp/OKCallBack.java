@@ -1,7 +1,5 @@
 package com.github.tvbox.osc.util.urlhttp;
 
-import java.io.IOException;
-
 import okhttp3.Call;
 import okhttp3.Response;
 
@@ -33,28 +31,4 @@ public abstract class OKCallBack<T> {
     protected abstract void onFailure(Call call, Exception e);
 
     protected abstract void onResponse(T response);
-
-    public static abstract class OKCallBackDefault extends OKCallBack<Response> {
-        @Override
-        public Response onParseResponse(Call call, Response response) {
-            return response;
-        }
-    }
-
-    public static abstract class OKCallBackString extends OKCallBack<String> {
-        @Override
-        public void onError(Call call, Exception e) {
-            setResult("");
-            super.onError(call, e);
-        }
-
-        @Override
-        public String onParseResponse(Call call, Response response) {
-            try {
-                return response.body().string();
-            } catch (IOException e) {
-                return "";
-            }
-        }
-    }
 }

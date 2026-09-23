@@ -29,7 +29,7 @@ public class TxtSubscribe {
         try {
             BufferedReader bufferedReader = new BufferedReader(new StringReader(str));
             LinkedHashMap<String, ArrayList<String>> linkedHashMap2 = new LinkedHashMap<>();
-            LinkedHashMap<String, ArrayList<String>> channelTemp = linkedHashMap2;
+            LinkedHashMap<String, ArrayList<String>> channelTemp;
             String line;
             while ((line = bufferedReader.readLine()) != null) {
                 if (line.equals("")) continue;

@@ -15,7 +15,7 @@ import xyz.doikki.videoplayer.render.IRenderView;
 import xyz.doikki.videoplayer.render.MeasureHelper;
 
 public class SurfaceRenderView extends SurfaceView implements IRenderView, SurfaceHolder.Callback {
-    private MeasureHelper mMeasureHelper;
+    private final MeasureHelper mMeasureHelper;
 
     private AbstractPlayer mMediaPlayer;
 
@@ -85,19 +85,19 @@ public class SurfaceRenderView extends SurfaceView implements IRenderView, Surfa
     }
 
     @Override
-    public void surfaceCreated(SurfaceHolder holder) {
+    public void surfaceCreated(@NonNull SurfaceHolder holder) {
 
     }
 
     @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+    public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
         if (mMediaPlayer != null) {
             mMediaPlayer.setDisplay(holder);
         }
     }
 
     @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
+    public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
 
     }
 }

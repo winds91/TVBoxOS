@@ -2,30 +2,24 @@ package com.github.tvbox.osc.ui.adapter;
 
 import android.annotation.SuppressLint;
 import android.graphics.Color;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.ui.tv.widget.AudioWaveView;
 import com.github.tvbox.osc.bean.Epginfo;
+import com.github.tvbox.osc.ui.tv.widget.AudioWaveView;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
     private int selectedEpgIndex = -1;
     private int focusedEpgIndex = -1;
-    public static float fontSize = 20;
-    private final int defaultShiyiSelection = 0;
     private boolean ShiyiSelection = false;
     private String shiyiDate = null;
-    private final String currentEpgDate = null;
-    private final int focusSelection = -1;
     private boolean source_include_back = false;
 
     SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");

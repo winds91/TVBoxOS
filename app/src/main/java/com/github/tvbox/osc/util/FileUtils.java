@@ -2,40 +2,10 @@ package com.github.tvbox.osc.util;
 
 import com.github.tvbox.osc.base.App;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 
 public class FileUtils {
-
-    public static byte[] readSimple(File src) {
-        try {
-            BufferedInputStream bis = new BufferedInputStream(new FileInputStream(src));
-            int len = bis.available();
-            byte[] data = new byte[len];
-            bis.read(data);
-            bis.close();
-            return data;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static void writeSimple(byte[] data, File dst) {
-        try {
-            if (dst.exists())
-                dst.delete();
-            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(dst));
-            bos.write(data);
-            bos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     public static String getCachePath() {
         return App.getInstance().getCacheDir().getAbsolutePath();

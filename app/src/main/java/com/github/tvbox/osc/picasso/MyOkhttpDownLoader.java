@@ -25,7 +25,6 @@ import com.google.gson.JsonObject;
 import com.squareup.picasso.Downloader;
 
 import java.io.IOException;
-import java.net.URL;
 import java.net.URLDecoder;
 
 import okhttp3.Cache;
@@ -50,14 +49,6 @@ public final class MyOkhttpDownLoader implements Downloader {
     public MyOkhttpDownLoader(OkHttpClient client) {
         this.client = client;
         this.cache = client.cache();
-    }
-
-    /**
-     * Create a new downloader that uses the specified {@link Call.Factory} instance.
-     */
-    public MyOkhttpDownLoader(Call.Factory client) {
-        this.client = client;
-        this.cache = null;
     }
 
     @NonNull

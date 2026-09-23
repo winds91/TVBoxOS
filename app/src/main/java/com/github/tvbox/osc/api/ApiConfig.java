@@ -1,5 +1,7 @@
 package com.github.tvbox.osc.api;
 
+import static com.github.tvbox.osc.util.RegexUtils.getPattern;
+
 import android.app.Activity;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -38,19 +40,17 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.github.tvbox.osc.util.RegexUtils.getPattern;
-
 public class ApiConfig {
     private static ApiConfig instance;
     private final List<LiveChannelGroup> liveChannelGroupList;
     private final List<LiveSettingGroup> liveSettingGroupList = new ArrayList<>();
     private List<IJKCode> ijkCodes;
     private final Gson gson;
-    private Map<String, String> myHosts = new HashMap<>();
+    private final Map<String, String> myHosts = new HashMap<>();
 
     private final String userAgent = "okhttp/3.15";
     private final String requestAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9";
-    private String TempKey = null;
+    private final String TempKey = null;
 
     private ApiConfig() {
         liveChannelGroupList = new ArrayList<>();
@@ -362,7 +362,7 @@ public class ApiConfig {
         int channelNum = 0;
         for (JsonElement groupElement : livesArray) {
             LiveChannelGroup liveChannelGroup = new LiveChannelGroup();
-            liveChannelGroup.setLiveChannels(new ArrayList<LiveChannelItem>());
+            liveChannelGroup.setLiveChannels(new ArrayList<>());
             liveChannelGroup.setGroupIndex(groupIndex++);
             String groupName = ((JsonObject) groupElement).get("group").getAsString().trim();
             String[] splitGroupName = groupName.split("_", 2);
@@ -388,7 +388,7 @@ public class ApiConfig {
                     if (splitText.length > 1)
                         sourceNames.add(splitText[1]);
                     else
-                        sourceNames.add("源" + Integer.toString(sourceIndex));
+                        sourceNames.add("源" + sourceIndex);
                     sourceIndex++;
                 }
                 liveChannelItem.setChannelSourceNames(sourceNames);

@@ -48,17 +48,13 @@ class RequestUtil {
      * get请求
      */
     private void urlHttpGet(final String url, final Map<String, String> paramsMap, final Map<String, String> headerMap, final CallBackUtil callBack) {
-        mThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                RealResponse response = new RealRequest().getData(getUrl(url, paramsMap), headerMap);
-                if (response.code == HttpURLConnection.HTTP_OK) {
-                    callBack.onSeccess(response);
-                } else {
-                    callBack.onError(response);
-                }
+        mThread = new Thread(() -> {
+            RealResponse response = new RealRequest().getData(getUrl(url, paramsMap), headerMap);
+            if (response.code == HttpURLConnection.HTTP_OK) {
+                callBack.onSeccess(response);
+            } else {
+                callBack.onError(response);
             }
-
         });
     }
 
@@ -66,16 +62,12 @@ class RequestUtil {
      * post请求
      */
     private void urlHttpPost(final String url, final Map<String, String> paramsMap, final String jsonStr, final Map<String, String> headerMap, final CallBackUtil callBack) {
-        mThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                RealResponse response = new RealRequest().postData(url, getPostBody(paramsMap, jsonStr), getPostBodyType(paramsMap, jsonStr), headerMap);
-                if (response.code == HttpURLConnection.HTTP_OK) {
-                    callBack.onSeccess(response);
-                } else {
-                    callBack.onError(response);
-                }
-
+        mThread = new Thread(() -> {
+            RealResponse response = new RealRequest().postData(url, getPostBody(paramsMap, jsonStr), getPostBodyType(paramsMap, jsonStr), headerMap);
+            if (response.code == HttpURLConnection.HTTP_OK) {
+                callBack.onSeccess(response);
+            } else {
+                callBack.onError(response);
             }
 
         });
@@ -86,18 +78,14 @@ class RequestUtil {
      * 上传文件
      */
     private void urlHttpUploadFile(final String url, final File file, final List<File> fileList, final Map<String, File> fileMap, final String fileKey, final String fileType, final Map<String, String> paramsMap, final Map<String, String> headerMap, final CallBackUtil callBack) {
-        mThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                RealResponse response = null;
-                response = new RealRequest().uploadFile(url, file, fileList, fileMap, fileKey, fileType, paramsMap, headerMap, callBack);
-                if (response.code == HttpURLConnection.HTTP_OK) {
-                    callBack.onSeccess(response);
-                } else {
-                    callBack.onError(response);
-                }
+        mThread = new Thread(() -> {
+            RealResponse response = null;
+            response = new RealRequest().uploadFile(url, file, fileList, fileMap, fileKey, fileType, paramsMap, headerMap, callBack);
+            if (response.code == HttpURLConnection.HTTP_OK) {
+                callBack.onSeccess(response);
+            } else {
+                callBack.onError(response);
             }
-
         });
     }
 

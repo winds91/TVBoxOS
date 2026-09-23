@@ -20,10 +20,6 @@ import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-
 import me.jessyan.autosize.AutoSizeCompat;
 import me.jessyan.autosize.internal.CustomAdapt;
 import xyz.doikki.videoplayer.util.CutoutUtil;
@@ -82,26 +78,13 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         return super.getResources();
     }
 
-    public boolean hasPermission(String permission) {
-        boolean has = true;
-        try {
-            has = PermissionChecker.checkSelfPermission(this, permission) == PermissionChecker.PERMISSION_GRANTED;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return has;
-    }
-
     protected abstract int getLayoutResID();
 
     protected abstract void init();
 
     protected void setLoadSir(View view) {
         if (mLoadService == null) {
-            mLoadService = LoadSir.getDefault().register(view, new Callback.OnReloadListener() {
-                @Override
-                public void onReload(View v) {
-                }
+            mLoadService = LoadSir.getDefault().register(view, (Callback.OnReloadListener) v -> {
             });
         }
     }
@@ -109,19 +92,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     protected void showLoading() {
         if (mLoadService != null) {
             mLoadService.showCallback(LoadingCallback.class);
-        }
-    }
-
-    protected boolean isLoading() {
-        if (mLoadService != null && mLoadService.getCurrentCallback() != null) {
-            return mLoadService.getCurrentCallback().equals(LoadingCallback.class);
-        }
-        return false;
-    }
-
-    protected void showEmpty() {
-        if (null != mLoadService) {
-            mLoadService.showCallback(EmptyCallback.class);
         }
     }
 
@@ -135,22 +105,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     protected void onDestroy() {
         super.onDestroy();
         AppManager.getInstance().finishActivity(this);
-    }
-
-    protected String getAssetText(String fileName) {
-        StringBuilder stringBuilder = new StringBuilder();
-        try {
-            AssetManager assets = getAssets();
-            BufferedReader bf = new BufferedReader(new InputStreamReader(assets.open(fileName)));
-            String line;
-            while ((line = bf.readLine()) != null) {
-                stringBuilder.append(line);
-            }
-            return stringBuilder.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "";
     }
 
     @Override

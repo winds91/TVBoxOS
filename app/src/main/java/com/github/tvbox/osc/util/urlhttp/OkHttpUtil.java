@@ -1,7 +1,6 @@
 package com.github.tvbox.osc.util.urlhttp;
 
 import com.github.tvbox.osc.util.OkGoHelper;
-import com.lzy.okgo.OkGo;
 
 import java.io.IOException;
 import java.util.List;

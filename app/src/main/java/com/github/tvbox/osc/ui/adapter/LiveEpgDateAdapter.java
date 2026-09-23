@@ -6,7 +6,6 @@ import android.widget.TextView;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.bean.LiveChannelGroup;
 import com.github.tvbox.osc.bean.LiveEpgDate;
 
 import java.util.ArrayList;
@@ -45,14 +44,5 @@ public class LiveEpgDateAdapter extends BaseQuickAdapter<LiveEpgDate, BaseViewHo
 
     public int getSelectedIndex() {
         return selectedIndex;
-    }
-
-    public void setFocusedIndex(int focusedIndex) {
-        int preSelectedIndex = this.selectedIndex;
-        this.focusedIndex = focusedIndex;
-        if(preSelectedIndex != -1)
-            notifyItemChanged(preSelectedIndex);
-        if (this.focusedIndex != -1)
-            notifyItemChanged(this.focusedIndex);
     }
 }
