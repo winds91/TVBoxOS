@@ -72,6 +72,9 @@ import org.json.JSONObject;
 
 import java.net.URLEncoder;
 import java.text.ParseException;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -2166,7 +2169,30 @@ public class LivePlayActivity extends BaseActivity {
      */
     private void setDefaultLiveChannelList() {
         liveChannelGroupList.clear();
-        // 创建默认直播分组
+        try {
+            InputStream is = getAssets().open("live_channels.txt");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            reader.close();
+
+            LinkedHashMap<String, LinkedHashMap<String, ArrayList<String>>> linkedHashMap = new LinkedHashMap<>();
+            TxtSubscribe.parse(linkedHashMap, sb.toString());
+            JsonArray livesArray = TxtSubscribe.live2JsonArray(linkedHashMap);
+            ApiConfig.get().loadLives(livesArray);
+            List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
+            if (!list.isEmpty()) {
+                liveChannelGroupList.addAll(list);
+                showSuccess();
+                initLiveState();
+                return;
+            }
+        } catch (Exception e) {
+            LOG.e("load built-in channels failed: " + e.getMessage());
+        }
         LiveChannelGroup defaultGroup = new LiveChannelGroup();
         defaultGroup.setGroupIndex(0);
         defaultGroup.setGroupName("default group");
@@ -2181,11 +2207,9 @@ public class LivePlayActivity extends BaseActivity {
         defaultSourceUrls.add("http://default.play.url/stream");
         defaultChannel.setChannelSourceNames(defaultSourceNames);
         defaultChannel.setChannelUrls(defaultSourceUrls);
-        // 将默认频道添加到分组内
         ArrayList<LiveChannelItem> channels = new ArrayList<>();
         channels.add(defaultChannel);
         defaultGroup.setLiveChannels(channels);
-        // 添加分组到全局列表
         liveChannelGroupList.add(defaultGroup);
         showSuccess();
         initLiveState();
