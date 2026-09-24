@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 public class LiveController extends BaseController {
     protected ProgressBar mLoading;
     private int minFlingDistance = 100;             //最小识别距离
-    private int minFlingVelocity = 10;              //最小识别速度
+    private final int minFlingVelocity = 10;              //最小识别速度
 
     public LiveController(@NotNull Context context) {
         super(context);
@@ -69,12 +69,14 @@ public class LiveController extends BaseController {
 
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-        if (e1.getX() - e2.getX() > minFlingDistance && Math.abs(velocityX) > minFlingVelocity) {
-            listener.changeSource(-1);          //左滑
-        } else if (e2.getX() - e1.getX() > minFlingDistance && Math.abs(velocityX) > minFlingVelocity) {
-            listener.changeSource(1);           //右滑
-        } else if (e1.getY() - e2.getY() > minFlingDistance && Math.abs(velocityY) > minFlingVelocity) {
-        } else if (e2.getY() - e1.getY() > minFlingDistance && Math.abs(velocityY) > minFlingVelocity) {
+        if (e1 != null && e2 != null) {
+            if (e1.getX() - e2.getX() > minFlingDistance && Math.abs(velocityX) > minFlingVelocity) {
+                listener.changeSource(-1);          //左滑
+            } else if (e2.getX() - e1.getX() > minFlingDistance && Math.abs(velocityX) > minFlingVelocity) {
+                listener.changeSource(1);           //右滑
+            } else if (e1.getY() - e2.getY() > minFlingDistance && Math.abs(velocityY) > minFlingVelocity) {
+            } else if (e2.getY() - e1.getY() > minFlingDistance && Math.abs(velocityY) > minFlingVelocity) {
+            }
         }
         return false;
     }

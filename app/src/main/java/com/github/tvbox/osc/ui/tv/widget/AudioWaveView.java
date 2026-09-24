@@ -30,7 +30,7 @@ public class AudioWaveView extends View {
     /** 条随机高度 */
     private int randomHeight;
     private Random random;
-    private Handler handler = new Handler() {
+    private final Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             invalidate();

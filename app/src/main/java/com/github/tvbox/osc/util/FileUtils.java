@@ -3,7 +3,6 @@ package com.github.tvbox.osc.util;
 import com.github.tvbox.osc.base.App;
 
 import java.io.File;
-import java.io.FileOutputStream;
 
 public class FileUtils {
 
@@ -49,22 +48,6 @@ public class FileUtils {
             if (ijkCacheDir.exists()) cleanDirectory(ijkCacheDir);
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    public static void saveCache(File cache, String json) {
-        try {
-            File cacheDir = cache.getParentFile();
-            if (!cacheDir.exists())
-                cacheDir.mkdirs();
-            if (cache.exists())
-                cache.delete();
-            FileOutputStream fos = new FileOutputStream(cache);
-            fos.write(json.getBytes("UTF-8"));
-            fos.flush();
-            fos.close();
-        } catch (Throwable th) {
-            th.printStackTrace();
         }
     }
 }

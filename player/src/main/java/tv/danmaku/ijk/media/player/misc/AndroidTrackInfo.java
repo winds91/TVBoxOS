@@ -89,7 +89,7 @@ public class AndroidTrackInfo implements ITrackInfo {
         out.append(getClass().getSimpleName());
         out.append('{');
         if (mTrackInfo != null) {
-            out.append(mTrackInfo.toString());
+            out.append(mTrackInfo);
         } else {
             out.append("null");
         }

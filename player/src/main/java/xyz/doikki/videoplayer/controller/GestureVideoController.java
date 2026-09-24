@@ -167,7 +167,7 @@ public abstract class GestureVideoController extends BaseVideoController impleme
      * 双击
      */
     @Override
-    public boolean onDoubleTap(MotionEvent e) {
+    public boolean onDoubleTap(@NonNull MotionEvent e) {
         if (mIsDoubleTapTogglePlayEnabled && !isLocked() && isInPlaybackState()) togglePlay();
         return true;
     }
@@ -176,7 +176,7 @@ public abstract class GestureVideoController extends BaseVideoController impleme
      * 在屏幕上滑动
      */
     @Override
-    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+    public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
         if (!isInPlaybackState() //不处于播放状态
                 || !mIsGestureEnabled //关闭了手势
                 || !mCanSlide //关闭了滑动手势
@@ -316,12 +316,12 @@ public abstract class GestureVideoController extends BaseVideoController impleme
     }
 
     @Override
-    public void onLongPress(MotionEvent e) {
+    public void onLongPress(@NonNull MotionEvent e) {
 
     }
 
     @Override
-    public void onShowPress(MotionEvent e) {
+    public void onShowPress(@NonNull MotionEvent e) {
 
     }
 

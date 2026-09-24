@@ -14,6 +14,7 @@ import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.kingja.loadsir.core.LoadSir;
 import com.orhanobut.hawk.Hawk;
+import com.orhanobut.hawk.NoEncryption;
 
 import me.jessyan.autosize.AutoSizeConfig;
 import me.jessyan.autosize.unit.Subunits;
@@ -42,10 +43,11 @@ public class App extends MultiDexApplication {
     }
 
     private void initParams() {
-        // Hawk
-        Hawk.init(this).build();
+        // Hawk：显式使用无加密实现，避免加载 libconceal.so（部分老旧 ARMv7 设备会 SIGILL 崩溃）
+        Hawk.init(this).setEncryption(new NoEncryption()).build();
         Hawk.put(HawkConfig.DEBUG_OPEN, false);
-        if (!Hawk.contains(HawkConfig.PLAY_TYPE)) {
+        // 旧版本用 Conceal 加密存储，切换到无加密后旧值读不出来，按默认播放器(IJK)重建，避免退化成系统播放器
+        if (Hawk.get(HawkConfig.PLAY_TYPE, null) == null) {
             Hawk.put(HawkConfig.PLAY_TYPE, 1);
         }
     }

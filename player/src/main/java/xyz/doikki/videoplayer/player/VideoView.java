@@ -15,7 +15,6 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -103,7 +102,7 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
     protected int[] mTinyScreenSize = {0, 0};
 
     /**
-     * 监听系统中音频焦点改变，见{@link #setEnableAudioFocus(boolean)}
+     * 监听系统中音频焦点改变
      */
     protected boolean mEnableAudioFocus;
     @Nullable
@@ -128,7 +127,7 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
     /**
      * {@link #mPlayerContainer}背景色，默认黑色
      */
-    private int mPlayerBackgroundColor;
+    private final int mPlayerBackgroundColor;
 
     public VideoView(@NonNull Context context) {
         this(context, null);
@@ -194,15 +193,13 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
 
     /**
      * 第一次播放
-     *
-     * @return 是否成功开始播放
      */
-    protected boolean startPlay() {
+    protected void startPlay() {
         //如果要显示移动网络提示则不继续播放
         if (showNetWarning()) {
             //中止播放
             setPlayState(STATE_START_ABORT);
-            return false;
+            return;
         }
         //监听音频焦点改变
         if (mEnableAudioFocus) {
@@ -215,7 +212,6 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         initPlayer();
         addDisplay();
         startPrepare(false);
-        return true;
     }
 
     /**
@@ -352,8 +348,7 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         if (isInPlaybackState() && !mMediaPlayer.isPlaying()) {
             assert mRenderView != null;
             View renderView = mRenderView.getView();
-            if (renderView instanceof SurfaceView) {
-                final SurfaceView surfaceView = (SurfaceView) renderView;
+            if (renderView instanceof SurfaceView surfaceView) {
                 final SurfaceHolder holder = surfaceView.getHolder();
                 if (holder.getSurface() != null && holder.getSurface().isValid()) {
                     mMediaPlayer.setDisplay(holder);
@@ -361,7 +356,7 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
                 } else {
                     holder.addCallback(new SurfaceHolder.Callback() {
                         @Override
-                        public void surfaceCreated(SurfaceHolder holder) {
+                        public void surfaceCreated(@NonNull SurfaceHolder holder) {
                             addDisplay();
                             if (mRenderView != null) {
                                 mRenderView.setScaleType(mCurrentScreenScaleType);
@@ -374,11 +369,11 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
                         }
 
                         @Override
-                        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+                        public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
                         }
 
                         @Override
-                        public void surfaceDestroyed(SurfaceHolder holder) {
+                        public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
                         }
                     });
                 }

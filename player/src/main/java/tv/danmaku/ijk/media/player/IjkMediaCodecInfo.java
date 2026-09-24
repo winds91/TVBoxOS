@@ -15,7 +15,6 @@ import java.util.TreeMap;
 public class IjkMediaCodecInfo {
     private final static String TAG = "IjkMediaCodecInfo";
 
-    public static final int RANK_MAX = 1000;
     public static final int RANK_TESTED = 800;
     public static final int RANK_ACCEPTABLE = 700;
     public static final int RANK_LAST_CHANCE = 600;
@@ -34,8 +33,7 @@ public class IjkMediaCodecInfo {
         if (sKnownCodecList != null)
             return sKnownCodecList;
 
-        sKnownCodecList = new TreeMap<String, Integer>(
-                String.CASE_INSENSITIVE_ORDER);
+        sKnownCodecList = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         // ----- Nvidia -----
         // Tegra3
@@ -146,7 +144,7 @@ public class IjkMediaCodecInfo {
             return null;
 
         name = name.toLowerCase(Locale.US);
-        int rank = RANK_NO_SENSE;
+        int rank;
         if (!name.startsWith("omx.")) {
             rank = RANK_NON_STANDARD;
         } else if (name.startsWith("omx.pv")) {

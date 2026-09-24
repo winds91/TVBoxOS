@@ -23,7 +23,7 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
 
     protected MediaPlayer mMediaPlayer;
     private int mBufferedPercent;
-    private Context mAppContext;
+    private final Context mAppContext;
     private boolean mIsPreparing;
 
     public AndroidMediaPlayer(Context context) {

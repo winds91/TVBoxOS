@@ -27,13 +27,8 @@ import com.google.android.exoplayer2.util.Clock;
 import com.google.android.exoplayer2.util.EventLogger;
 import com.google.android.exoplayer2.video.VideoSize;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
 
-import okhttp3.Dns;
-import okhttp3.OkHttpClient;
 import xyz.doikki.videoplayer.player.AbstractPlayer;
 import xyz.doikki.videoplayer.player.VideoViewManager;
 import xyz.doikki.videoplayer.util.PlayerUtils;
@@ -157,15 +152,10 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
         if (mInternalPlayer == null)
             return false;
         int state = mInternalPlayer.getPlaybackState();
-        switch (state) {
-            case Player.STATE_BUFFERING:
-            case Player.STATE_READY:
-                return mInternalPlayer.getPlayWhenReady();
-            case Player.STATE_IDLE:
-            case Player.STATE_ENDED:
-            default:
-                return false;
-        }
+        return switch (state) {
+            case Player.STATE_BUFFERING, Player.STATE_READY -> mInternalPlayer.getPlayWhenReady();
+            default -> false;
+        };
     }
 
     @Override
@@ -285,14 +275,14 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
     }
 
     @Override
-    public void onPlayerError(ExoPlaybackException error) {
+    public void onPlayerError(@NonNull ExoPlaybackException error) {
         if (mPlayerEventListener != null) {
             mPlayerEventListener.onError();
         }
     }
 
     @Override
-    public void onVideoSizeChanged(VideoSize videoSize) {
+    public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
         if (mPlayerEventListener != null) {
             mPlayerEventListener.onVideoSizeChanged(videoSize.width, videoSize.height);
             if (videoSize.unappliedRotationDegrees > 0) {

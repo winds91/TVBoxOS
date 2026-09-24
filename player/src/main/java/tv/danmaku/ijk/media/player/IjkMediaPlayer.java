@@ -173,12 +173,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * Default library loader
      * Load them by yourself, if your libraries are not installed at default place.
      */
-    private static final IjkLibLoader sLocalLibLoader = new IjkLibLoader() {
-        @Override
-        public void loadLibrary(String libName) throws UnsatisfiedLinkError, SecurityException {
-            System.loadLibrary(libName);
-        }
-    };
+    private static final IjkLibLoader sLocalLibLoader = libName -> System.loadLibrary(libName);
 
     private static volatile boolean mIsLibLoaded = false;
 
@@ -258,7 +253,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
          * Native setup requires a weak reference to our object. It's easier to
          * create it here than in C++.
          */
-        native_setup(new WeakReference<IjkMediaPlayer>(this));
+        native_setup(new WeakReference<>(this));
     }
 
     private native void _setFrameAtTime(String imgCachePath, long startTime, long endTime, int num, int imgDefinition)
@@ -610,7 +605,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             return null;
 
         IjkMediaMeta mediaMeta = IjkMediaMeta.parse(bundle);
-        if (mediaMeta == null || mediaMeta.mStreams == null)
+        if (mediaMeta == null)
             return null;
 
         ArrayList<IjkTrackInfo> trackInfos = new ArrayList<IjkTrackInfo>();
@@ -626,7 +621,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             trackInfos.add(trackInfo);
         }
 
-        return trackInfos.toArray(new IjkTrackInfo[trackInfos.size()]);
+        return trackInfos.toArray(new IjkTrackInfo[0]);
     }
 
     // TODO: @Override
@@ -872,7 +867,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
         String videoCodecInfo = _getVideoCodecInfo();
         if (!TextUtils.isEmpty(videoCodecInfo)) {
-            String nodes[] = videoCodecInfo.split(",");
+            String[] nodes = videoCodecInfo.split(",");
             if (nodes.length >= 2) {
                 mediaInfo.mVideoDecoder = nodes[0];
                 mediaInfo.mVideoDecoderImpl = nodes[1];
@@ -884,7 +879,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
         String audioCodecInfo = _getAudioCodecInfo();
         if (!TextUtils.isEmpty(audioCodecInfo)) {
-            String nodes[] = audioCodecInfo.split(",");
+            String[] nodes = audioCodecInfo.split(",");
             if (nodes.length >= 2) {
                 mediaInfo.mAudioDecoder = nodes[0];
                 mediaInfo.mAudioDecoderImpl = nodes[1];
@@ -976,7 +971,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
         public EventHandler(IjkMediaPlayer mp, Looper looper) {
             super(looper);
-            mWeakPlayer = new WeakReference<IjkMediaPlayer>(mp);
+            mWeakPlayer = new WeakReference<>(mp);
         }
 
         @Override
@@ -1062,11 +1057,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                             player.notifyOnTimedText(text);
                         } else if (msg.arg1 == 2) { // bitmap
                             IjkTimedText text;
-                            if (msg.arg2 > 0 && ((int[]) msg.obj).length == msg.arg2) {
-                                text = new IjkTimedText((int[]) msg.obj);
-                            } else {
-                                text = new IjkTimedText(null, "");
-                            }
+                            text = new IjkTimedText(null, "");
                             player.notifyOnTimedText(text);
                         }
                     }

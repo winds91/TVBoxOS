@@ -40,7 +40,7 @@ public final class MyOkhttpDownLoader implements Downloader {
     @VisibleForTesting
     final Call.Factory client;
     private final Cache cache;
-    private boolean sharedClient = true;
+    private final boolean sharedClient = true;
 
     /**
      * Create a new downloader that uses the specified OkHttp instance. A response cache will not be
@@ -79,18 +79,15 @@ public final class MyOkhttpDownLoader implements Downloader {
             }
         }else {
             if(!TextUtils.isEmpty(cookie)) {
-                assert cookie != null;
                 mRequestBuilder.addHeader("Cookie", cookie);
             }
             if(!TextUtils.isEmpty(ua)){
-                assert ua != null;
                 mRequestBuilder.addHeader("User-Agent", ua);
             }else {
                 String mobile_UA = "Dalvik/2.1.0 (Linux; U; Android 13; M2102J2SC Build/TKQ1.220829.002)";
                 mRequestBuilder.addHeader("User-Agent", mobile_UA);
             }
             if(!TextUtils.isEmpty(referer)){
-                assert referer != null;
                 mRequestBuilder.addHeader("Referer", referer);
             }
         }
@@ -98,7 +95,7 @@ public final class MyOkhttpDownLoader implements Downloader {
     }
 
     private static String removeDuplicateSlashes(String paramValue) {
-        return paramValue.replaceAll("//", "/");
+        return paramValue.replace("//", "/");
     }
     @Override
     public void shutdown() {

@@ -18,7 +18,7 @@ public class Epginfo {
     public String end;
     public int index;
     public Date epgDate;
-    public String currentEpgDate = null;
+    public String currentEpgDate;
     SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     public Epginfo(Date Date,String str, Date date, String str1, String str2,int pos) {

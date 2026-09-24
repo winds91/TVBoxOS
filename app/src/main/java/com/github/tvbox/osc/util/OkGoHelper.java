@@ -21,15 +21,10 @@ import com.squareup.picasso.Picasso;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.security.cert.CertificateException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -80,7 +75,7 @@ public class OkGoHelper {
         }
 
 //        builder.dns(dnsOverHttps);
-        builder.dns(new CustomDns(dnsOverHttps));
+        builder.dns(new CustomDns());
         ItvClient=builder.build();
 
         ExoMediaSourceHelper.getInstance(App.getInstance()).setOkClient(ItvClient);
@@ -90,7 +85,6 @@ public class OkGoHelper {
 
     public static ArrayList<String> dnsHttpsList = new ArrayList<>();
 
-    public static boolean is_doh = false;
     public static Map<String, String> myHosts = null;
 
     public static String getDohUrl(int type) {
@@ -102,21 +96,6 @@ public class OkGoHelper {
             return dnsConfig.get("url").getAsString();  // 获取对应的 URL
         }
         return "";
-    }
-
-    public static void setDnsList() {
-        dnsHttpsList.clear();
-        String json=Hawk.get(HawkConfig.DOH_JSON,"");
-        if(json.isEmpty())json=dnsConfigJson;
-        JsonArray jsonArray = JsonParser.parseString(json).getAsJsonArray();
-        dnsHttpsList.add("关闭");
-        for (int i = 0; i < jsonArray.size(); i++) {
-            JsonObject dnsConfig = jsonArray.get(i).getAsJsonObject();
-            String name = dnsConfig.has("name") ? dnsConfig.get("name").getAsString() : "Unknown Name";
-            dnsHttpsList.add(name);
-        }
-        if(Hawk.get(HawkConfig.DOH_URL, 0)+1>dnsHttpsList.size())Hawk.put(HawkConfig.DOH_URL, 0);
-
     }
 
     private static List<InetAddress> DohIps(JsonArray ips) {
@@ -179,12 +158,10 @@ public class OkGoHelper {
 
     // 自定义 DNS 解析器
     static class CustomDns implements Dns {
-        private  ConcurrentHashMap<String, List<InetAddress>> map;
-        private final String excludeIps = "2409:8087:6c02:14:100::14,2409:8087:6c02:14:100::18,39.134.108.253,39.134.108.245";
         private final DnsOverHttps mDnsOverHttps;
 
         // 接收外部注入的 DoH 实例
-        public CustomDns(DnsOverHttps dnsOverHttps) {
+        public CustomDns() {
             this.mDnsOverHttps = dnsOverHttps;
         }
         @NonNull
@@ -202,41 +179,6 @@ public class OkGoHelper {
             }
             else {
                 return  mDnsOverHttps.lookup(hostname);
-            }
-        }
-
-        public synchronized void mapHosts(Map<String,String> hosts) throws UnknownHostException {
-            map=new ConcurrentHashMap<>();
-            for (Map.Entry<String, String> entry : hosts.entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-                if(isValidIpAddress(value)){
-                    map.put(key,Collections.singletonList(InetAddress.getByName(value)));
-                }else {
-                    map.put(key,getAllByName(value));
-                }
-            }
-        }
-
-        private List<InetAddress> getAllByName(String host) {
-            try {
-                // 获取所有与主机名关联的 IP 地址
-                InetAddress[] allAddresses = InetAddress.getAllByName(host);
-                if(excludeIps.isEmpty())return Arrays.asList(allAddresses);
-                // 创建一个列表用于存储有效的 IP 地址
-                List<InetAddress> validAddresses = new ArrayList<>();
-                Set<String> excludeIpsSet = new HashSet<>();
-                for (String ip : excludeIps.split(",")) {
-                    excludeIpsSet.add(ip.trim());  // 添加到集合，去除多余的空格
-                }
-                for (InetAddress address : allAddresses) {
-                    if (!excludeIpsSet.contains(address.getHostAddress())) {
-                        validAddresses.add(address);
-                    }
-                }
-                return validAddresses;
-            } catch (Exception e) {
-                return new ArrayList<>();
             }
         }
 
@@ -331,11 +273,11 @@ public class OkGoHelper {
             final X509TrustManager trustAllCert =
                     new X509TrustManager() {
                         @Override
-                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
                         }
 
                         @Override
-                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
                         }
 
                         @Override

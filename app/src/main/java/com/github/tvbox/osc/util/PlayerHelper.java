@@ -1,8 +1,10 @@
 package com.github.tvbox.osc.util;
 
+import android.app.ActivityManager;
 import android.content.Context;
 
 import com.github.tvbox.osc.api.ApiConfig;
+import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.player.ExoMediaPlayerFactory;
 import com.github.tvbox.osc.player.IjkMediaPlayer;
@@ -14,7 +16,6 @@ import org.json.JSONObject;
 
 import java.text.DecimalFormat;
 
-import tv.danmaku.ijk.media.player.IjkLibLoader;
 import xyz.doikki.videoplayer.player.AndroidMediaPlayerFactory;
 import xyz.doikki.videoplayer.player.PlayerFactory;
 import xyz.doikki.videoplayer.player.VideoView;
@@ -44,12 +45,6 @@ public class PlayerHelper {
         applyPlayerConfig(videoView, playerType, renderType, ijkCode, scale);
     }
 
-    public static void updateCfg(VideoView videoView) {
-        int playType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
-        int renderType = Hawk.get(HawkConfig.PLAY_RENDER, 0);
-        applyPlayerConfig(videoView, playType, renderType, Hawk.get(HawkConfig.IJK_CODEC, "硬解码"), Hawk.get(HawkConfig.PLAY_SCALE, 0));
-    }
-
     private static void applyPlayerConfig(VideoView videoView, int playerType, int renderType, String ijkCode, int scale) {
         IJKCode codec = ApiConfig.get().getIJKCodec(ijkCode);
         PlayerFactory playerFactory;
@@ -66,15 +61,11 @@ public class PlayerHelper {
         } else {
             playerFactory = AndroidMediaPlayerFactory.create();
         }
-        RenderViewFactory renderViewFactory;
-        switch (renderType) {
-            case 1:
-                renderViewFactory = SurfaceRenderViewFactory.create();
-                break;
-            default:
-                renderViewFactory = TextureRenderViewFactory.create();
-                break;
-        }
+        boolean useSurface = renderType == 1 || !isTextureViewUsable(videoView);
+        LOG.i("render view: " + (useSurface ? "SurfaceView" : "TextureView"));
+        RenderViewFactory renderViewFactory = useSurface
+                ? SurfaceRenderViewFactory.create()
+                : TextureRenderViewFactory.create();
         if (videoView != null) {
             videoView.setPlayerFactory(playerFactory);
             videoView.setRenderViewFactory(renderViewFactory);
@@ -82,16 +73,24 @@ public class PlayerHelper {
         }
     }
 
+    /**
+     * TextureView 依赖窗口硬件加速，以下情况会黑屏，需要回退 SurfaceView：
+     * 1、无 GPU 或只支持 OpenGL ES 1.x 的老设备；
+     * 2、GLES 版本达标、但窗口实际没有硬件加速的设备(部分模拟器、显卡驱动异常的老设备)
+     */
+    private static boolean isTextureViewUsable(VideoView videoView) {
+        ActivityManager am = (ActivityManager) App.getInstance().getSystemService(Context.ACTIVITY_SERVICE);
+        if (am == null || am.getDeviceConfigurationInfo().reqGlEsVersion < 0x20000) return false;
+        return videoView == null || videoView.getWindowToken() == null || videoView.isHardwareAccelerated();
+    }
+
     private static void loadIjkLibrary() {
         try {
-            tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                @Override
-                public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                    try {
-                        System.loadLibrary(s);
-                    } catch (Throwable th) {
-                        th.printStackTrace();
-                    }
+            tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(s -> {
+                try {
+                    System.loadLibrary(s);
+                } catch (Throwable th) {
+                    th.printStackTrace();
                 }
             });
         } catch (Throwable th) {
@@ -101,50 +100,6 @@ public class PlayerHelper {
 
     public static void init() {
         loadIjkLibrary();
-    }
-
-    public static String getPlayerName(int playType) {
-        switch (playType) {
-            case 1:
-                return "IJK播放器";
-            case 2:
-                return "Exo播放器";
-            default:
-                return "系统播放器";
-        }
-    }
-
-    public static String getRenderName(int renderType) {
-        if (renderType == 1) {
-            return "SurfaceView";
-        } else {
-            return "TextureView";
-        }
-    }
-
-    public static String getScaleName(int screenScaleType) {
-        String scaleText = "默认";
-        switch (screenScaleType) {
-            case VideoView.SCREEN_SCALE_DEFAULT:
-                scaleText = "默认";
-                break;
-            case VideoView.SCREEN_SCALE_16_9:
-                scaleText = "16:9";
-                break;
-            case VideoView.SCREEN_SCALE_4_3:
-                scaleText = "4:3";
-                break;
-            case VideoView.SCREEN_SCALE_MATCH_PARENT:
-                scaleText = "填充";
-                break;
-            case VideoView.SCREEN_SCALE_ORIGINAL:
-                scaleText = "原始";
-                break;
-            case VideoView.SCREEN_SCALE_CENTER_CROP:
-                scaleText = "裁剪";
-                break;
-        }
-        return scaleText;
     }
 
     public static String getDisplaySpeed(long speed, boolean show) {
