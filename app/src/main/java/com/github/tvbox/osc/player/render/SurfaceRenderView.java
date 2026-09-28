@@ -96,6 +96,24 @@ public class SurfaceRenderView extends SurfaceView implements IRenderView, Surfa
         }
     }
 
+    /**
+     * Android 5.1 (API 22) 框架缺陷：窗口会话销毁后，系统仍可能在一次遍历里向仍挂载的
+     * SurfaceView 派发窗口可见性变化（dispatchWindowVisibilityChanged → onWindowVisibilityChanged →
+     * updateWindow），此时会对已经为 null 的 IWindowSession 调用 performDeferredDestroy 而 NPE 崩溃
+     * （栈：SurfaceView.updateWindow → performDeferredDestroy on null IWindowSession）。
+     * 这里在窗口已拆（getWindowToken()==null）时跳过派发，并对框架层异常兜底，避免该缺陷让进程崩溃。
+     */
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        try {
+            if (getWindowToken() != null) {
+                super.onWindowVisibilityChanged(visibility);
+            }
+        } catch (Throwable th) {
+            // 仅在窗口拆卸/销毁阶段吞掉框架层 SurfaceView.updateWindow 的 NPE，不影响正常播放
+        }
+    }
+
     @Override
     public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
 

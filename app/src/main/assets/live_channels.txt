@@ -1,13 +1,10 @@
 央视,#genre#
-CCTV-1HD,http://play.kankanlive.com/live/1720408280309109.m3u8#rtmp://play.kankanlive.com/live/1720408280309109#http://gbds.chiznews.com:8037/live/wjsh.m3u8#http://gbds.chiznews.com:8037/live/wjsh.flv
-CCTV-2HD,https://livealiop-finance.cctv.cn/hls/CCTV28bee868714f04ea2af79947bb9b46fc3H/playlist.m3u8
-CCTV-5+HD,http://media.hndyjyfw.gov.cn/live/jz-cctv-5-plus/live.m3u8
-重温经典,http://hebcx.chinashadt.com:2036/live/10002.stream/playlist.m3u8
-CCTV-1综合,rtmp://play.kankanlive.com/live/1698234869325962#http://fjwysdb.chinashadt.com:2036/live/3.stream/playlist.m3u8#http://media.hndyjyfw.gov.cn/live/jz-cctv-1/live.m3u8#http://play.kankanlive.com/live/1698234869325962.m3u8#http://hebcx.chinashadt.com:2036/live/10003.stream/playlist.m3u8
-CCTV-2财经,rtmp://play.kankanlive.com/live/1698234898628961#http://play.kankanlive.com/live/1698234898628961.m3u8
+CCTV-1综合,http://play.kankanlive.com/live/1720408280309109.m3u8#rtmp://play.kankanlive.com/live/1720408280309109#http://gbds.chiznews.com:8037/live/wjsh.m3u8#http://gbds.chiznews.com:8037/live/wjsh.flv#rtmp://play.kankanlive.com/live/1698234869325962#http://fjwysdb.chinashadt.com:2036/live/3.stream/playlist.m3u8#http://media.hndyjyfw.gov.cn/live/jz-cctv-1/live.m3u8#http://play.kankanlive.com/live/1698234869325962.m3u8#http://hebcx.chinashadt.com:2036/live/10003.stream/playlist.m3u8
+CCTV-2财经,https://livealiop-finance.cctv.cn/hls/CCTV28bee868714f04ea2af79947bb9b46fc3H/playlist.m3u8#rtmp://play.kankanlive.com/live/1698234898628961#http://play.kankanlive.com/live/1698234898628961.m3u8
 CCTV-3综艺,http://media.hndyjyfw.gov.cn/live/jz-cctv-3/live.m3u8
 CCTV-4中文国际,rtmp://play.kankanlive.com/live/1698234936258960#http://play.kankanlive.com/live/1698234936258960.m3u8
 CCTV-5体育,http://media.hndyjyfw.gov.cn/live/jz-cctv-5/live.m3u8#http://hebcx.chinashadt.com:2036/live/10007.stream/playlist.m3u8
+CCTV-5+HD,http://media.hndyjyfw.gov.cn/live/jz-cctv-5-plus/live.m3u8
 CCTV-6电影,http://media.hndyjyfw.gov.cn/live/jz-cctv-6/live.m3u8
 CCTV-7国防军事,http://media.hndyjyfw.gov.cn/live/jz-cctv-7/live.m3u8
 CCTV-9纪录,rtmp://play.kankanlive.com/live/1698423397390920#http://media.hndyjyfw.gov.cn/live/jz-cctv-9/live.m3u8#http://play.kankanlive.com/live/1698423397390920.m3u8
@@ -18,6 +15,7 @@ CCTV-13新闻,https://221.2.36.14/video/s10001-cctv/index.m3u8#https://60.211.17
 CCTV-14少儿,rtmp://play.kankanlive.com/live/1698423575756915#http://media.hndyjyfw.gov.cn/live/jz-cctv-14/live.m3u8#http://play.kankanlive.com/live/1698423575756915.m3u8
 CCTV-15音乐,rtmp://play.kankanlive.com/live/1698423607826914#http://play.kankanlive.com/live/1698423607826914.m3u8#http://hbhh.chinashadt.com:2111/live/hbhhys.stream/playlist.m3u8
 CCTV-17农业农村,rtmp://play.kankanlive.com/live/1698423272597921#http://play.kankanlive.com/live/1698423272597921.m3u8
+重温经典,http://hebcx.chinashadt.com:2036/live/10002.stream/playlist.m3u8
 CGTN,https://english-livebkali.cgtn.com/live/encgtn_0.m3u8#https://english-liveali.cgtn.com/hls/yypdyyctzb/yypdyyctzbcd/playlist.m3u8#https://english-liveali.cgtn.com/hls/yypdyyctzb/yypdyyctzbhd/playlist.m3u8#https://english-liveali.cgtn.com/hls/yypdyyctzb/playlist.m3u8#https://english-livews.cgtn.com/hls/yypdyyctzbhd/playlist.m3u8#https://english-livews.cgtn.com/hls/yypdyyctzb/playlist.m3u8#https://english-livetx.cgtn.com/hls/yypdyyctzb_hd.m3u8#https://english-livetx.cgtn.com/hls/yypdyyctzb/playlist.m3u8#https://english-livebkali.cgtn.com/live/encgtn_1.m3u8#https://english-livebkali.cgtn.com/live/encgtn_2.m3u8#rtmp://play.kankanlive.com/live/1698423645566913#http://play.kankanlive.com/live/1698423645566913.m3u8
 CGTN纪录,https://english-livebkali.cgtn.com/live/doccgtn_0.m3u8#https://english-liveali.cgtn.com/hls/yypdjlctzb/yypdjlctzbcd/playlist.m3u8#https://english-liveali.cgtn.com/hls/yypdjlctzb/yypdjlctzbhd/playlist.m3u8#https://english-liveali.cgtn.com/hls/yypdjlctzb/playlist.m3u8#https://english-livebkali.cgtn.com/live/doccgtn_1.m3u8#https://english-livebkali.cgtn.com/live/doccgtn_2.m3u8
 中央新影-中学生,http://live-play.zxstv.com.cn/zhongxuesheng/zhongxuesheng.m3u8

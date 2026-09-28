@@ -783,11 +783,21 @@ public class LivePlayActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        if (mVideoView != null) {
-            mVideoView.release();
-            mVideoView = null;
+        try {
+            // Android 5.1 框架缺陷：窗口会话销毁后仍会向 SurfaceView 派发可见性变化，
+            // 在 SurfaceView.updateWindow 中对 null 的 IWindowSession 调 performDeferredDestroy 而 NPE。
+            // 在窗口拆卸前先停播、释放，并把渲染视图移出视图树，避免后续遍历派发到 SurfaceView。
+            if (mVideoView != null) {
+                mVideoView.pause();
+                mVideoView.release();
+                ViewGroup parent = (ViewGroup) mVideoView.getParent();
+                if (parent != null) parent.removeView(mVideoView);
+                mVideoView = null;
+            }
+        } catch (Throwable th) {
+            LOG.i("live-onDestroy: " + th.getMessage());
         }
+        super.onDestroy();
     }
 
     private void showChannelList() {
