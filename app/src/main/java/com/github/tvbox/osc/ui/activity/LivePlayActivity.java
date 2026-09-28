@@ -897,17 +897,18 @@ public class LivePlayActivity extends BaseActivity {
     private Boolean hasCatchup = false;
     private String logoUrl = null;
 
-    private void initLiveObj() {
-        int position = Hawk.get(HawkConfig.LIVE_GROUP_INDEX, 0);
-        JsonArray live_groups = Hawk.get(HawkConfig.LIVE_GROUP_LIST, new JsonArray());
-        JsonObject livesOBJ = live_groups.get(position).getAsJsonObject();
+    private void initLiveObj(JsonObject livesOBJ) {
+        catchup = null;
+        hasCatchup = false;
+        logoUrl = null;
+        if (livesOBJ == null) return;
 
-        if (livesOBJ.has("catchup")) {
+        if (livesOBJ.has("catchup") && livesOBJ.get("catchup").isJsonObject()) {
             catchup = livesOBJ.getAsJsonObject("catchup");
             LOG.i("echo-catchup :" + catchup.toString());
             hasCatchup = true;
         }
-        if (livesOBJ.has("logo")) {
+        if (livesOBJ.has("logo") && livesOBJ.get("logo").isJsonPrimitive()) {
             logoUrl = livesOBJ.get("logo").getAsString();
         }
     }
@@ -1733,17 +1734,13 @@ public class LivePlayActivity extends BaseActivity {
                 liveSettingItemAdapter.selectItem(position, select, false);
                 break;
             case 5://多源切换
-                //TODO
-                if (mVideoView != null) {
-                    mVideoView.release();
-                    mVideoView = null;
-                }
-                if (position == Hawk.get(HawkConfig.LIVE_GROUP_INDEX, 0)) break;
-                JsonArray live_groups = Hawk.get(HawkConfig.LIVE_GROUP_LIST, new JsonArray());
-                JsonObject livesOBJ = live_groups.get(position).getAsJsonObject();
-                liveSettingItemAdapter.selectItem(position, true, true);
+                JsonArray liveSources = ApiConfig.get().getLiveSources();
+                if (position < 0 || position >= liveSources.size()) break;
+                if (position == ApiConfig.get().getLiveGroupIndex()) break;
                 Hawk.put(HawkConfig.LIVE_GROUP_INDEX, position);
-                ApiConfig.get().loadLiveApi(livesOBJ);
+                LOG.i("echo-live-source switch:" + position);
+                // 清掉已加载的频道，recreate 后按新数据源重新加载
+                ApiConfig.get().clearChannels();
                 recreate();
                 return;
         }
@@ -1752,20 +1749,27 @@ public class LivePlayActivity extends BaseActivity {
     }
 
     private void initLiveChannelList() {
+        JsonObject liveSource = ApiConfig.get().getCurrentLiveSource();
+        initLiveObj(liveSource);
         List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
-        if (list.isEmpty()) {
-            setDefaultLiveChannelList();
-            return;
-        }
-        initLiveObj();
-        if (list.size() == 1 && list.get(0).getLiveChannels().isEmpty()) {
-            loadProxyLives(list.get(0).getGroupName());
-        } else {
+        if (!list.isEmpty()) {
+            // 进程没被回收，退出后再次进入直接复用已经加载好的频道
             liveChannelGroupList.clear();
             liveChannelGroupList.addAll(list);
             showSuccess();
             initLiveState();
+            return;
         }
+        // 首次进入或刚切换过数据源，按当前数据源加载频道
+        if (liveSource == null || !ApiConfig.get().applyLiveSource(liveSource)) {
+            setDefaultLiveChannelList();
+            return;
+        }
+        String url = ApiConfig.get().getLiveSourceUrl(liveSource);
+        if (url.isEmpty())
+            setDefaultLiveChannelList();
+        else
+            loadProxyLives(url);
     }
 
     public void loadProxyLives(String url) {
@@ -1845,11 +1849,9 @@ public class LivePlayActivity extends BaseActivity {
     }
 
     private void initLiveSettingGroupList() {
+        // 多源切换的条目取自当前的数据源列表，每次都重建，避免数据源变化后条目对不上
+        ApiConfig.get().initLiveSettings();
         liveSettingGroupList = ApiConfig.get().getLiveSettingGroupList();
-        if (liveSettingGroupList.isEmpty()) {
-            ApiConfig.get().initLiveSettings();
-            liveSettingGroupList = ApiConfig.get().getLiveSettingGroupList();
-        }
         if (liveSettingGroupList.size() <= 5) return;
         List<LiveSettingItem> timeoutItems = liveSettingGroupList.get(3).getLiveSettingItems();
         int timeoutIndex = Hawk.get(HawkConfig.LIVE_CONNECT_TIMEOUT, 1);
@@ -1865,7 +1867,7 @@ public class LivePlayActivity extends BaseActivity {
         if (personalItems.size() > 3)
             personalItems.get(3).setItemSelected(Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false));
         List<LiveSettingItem> sourceItems = liveSettingGroupList.get(5).getLiveSettingItems();
-        int groupIndex = Hawk.get(HawkConfig.LIVE_GROUP_INDEX, 0);
+        int groupIndex = ApiConfig.get().getLiveGroupIndex();
         if (groupIndex < sourceItems.size()) sourceItems.get(groupIndex).setItemSelected(true);
     }
 

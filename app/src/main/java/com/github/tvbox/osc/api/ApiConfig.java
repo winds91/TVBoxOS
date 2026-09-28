@@ -34,7 +34,7 @@ public class ApiConfig {
     private ApiConfig() {
         liveChannelGroupList = new ArrayList<>();
         gson = new Gson();
-        Hawk.put(HawkConfig.LIVE_GROUP_LIST, new JsonArray());
+        initLiveSources();
         loadDefaultConfig();
     }
 
@@ -49,6 +49,74 @@ public class ApiConfig {
         return instance;
     }
 
+    // 多源列表：url 为空表示内置源（读 assets/live_channels.txt 的写死数据源），
+    // 后续切换数据源时往 LIVE_GROUP_LIST 里写入 {"name":..,"type":..,"url":..} 即可
+    private void initLiveSources() {
+        JsonArray liveSources = Hawk.get(HawkConfig.LIVE_GROUP_LIST, new JsonArray());
+        if (liveSources == null || liveSources.size() == 0) {
+            JsonObject builtInSource = new JsonObject();
+            builtInSource.addProperty("name", "内置源");
+            builtInSource.addProperty("type", "0");
+            builtInSource.addProperty("url", "");
+            liveSources = new JsonArray();
+            liveSources.add(builtInSource);
+            Hawk.put(HawkConfig.LIVE_GROUP_LIST, liveSources);
+        }
+        int index = Hawk.get(HawkConfig.LIVE_GROUP_INDEX, 0);
+        if (index < 0 || index >= liveSources.size()) {
+            Hawk.put(HawkConfig.LIVE_GROUP_INDEX, 0);
+        }
+    }
+
+    public JsonArray getLiveSources() {
+        JsonArray liveSources = Hawk.get(HawkConfig.LIVE_GROUP_LIST, new JsonArray());
+        return liveSources == null ? new JsonArray() : liveSources;
+    }
+
+    // 写入数据源列表（接入别的数据源时调用），选中下标越界会自动回到第 1 个源
+    public void setLiveSources(JsonArray liveSources) {
+        if (liveSources == null || liveSources.size() == 0) return;
+        Hawk.put(HawkConfig.LIVE_GROUP_LIST, liveSources);
+        getLiveGroupIndex();
+    }
+
+    public String getLiveSourceName(JsonObject source, int index) {
+        if (source != null && source.has("name")) {
+            String name = source.get("name").getAsString().trim();
+            if (!name.isEmpty()) return name;
+        }
+        return "线路" + (index + 1);
+    }
+
+    public String getLiveSourceUrl(JsonObject source) {
+        if (source == null) return "";
+        String url = source.has("url") ? source.get("url").getAsString().trim() : "";
+        if (url.isEmpty() && source.has("api")) url = source.get("api").getAsString().trim();
+        return url;
+    }
+
+    public int getLiveGroupIndex() {
+        JsonArray liveSources = getLiveSources();
+        int index = Hawk.get(HawkConfig.LIVE_GROUP_INDEX, 0);
+        if (index < 0 || index >= liveSources.size()) {
+            index = 0;
+            Hawk.put(HawkConfig.LIVE_GROUP_INDEX, index);
+        }
+        return index;
+    }
+
+    public JsonObject getCurrentLiveSource() {
+        JsonArray liveSources = getLiveSources();
+        int index = getLiveGroupIndex();
+        if (index >= liveSources.size()) return null;
+        JsonElement element = liveSources.get(index);
+        return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
+    }
+
+    public void clearChannels() {
+        liveChannelGroupList.clear();
+    }
+
     public void initLiveSettings() {
         ArrayList<String> groupNames = new ArrayList<>(Arrays.asList("线路选择", "画面比例", "播放解码", "超时换源", "偏好设置", "多源切换"));
         ArrayList<ArrayList<String>> itemsArrayList = new ArrayList<>();
@@ -58,6 +126,12 @@ public class ApiConfig {
         ArrayList<String> timeoutItems = new ArrayList<>(Arrays.asList("5s", "10s", "15s", "20s", "25s", "30s"));
         ArrayList<String> personalSettingItems = new ArrayList<>(Arrays.asList("显示时间", "显示网速", "换台反转", "跨选分类"));
         ArrayList<String> yumItems = new ArrayList<>();
+        JsonArray liveSources = getLiveSources();
+        for (int i = 0; i < liveSources.size(); i++) {
+            JsonElement element = liveSources.get(i);
+            JsonObject source = element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
+            yumItems.add(getLiveSourceName(source, i));
+        }
 
         itemsArrayList.add(sourceItems);
         itemsArrayList.add(scaleItems);
@@ -131,30 +205,39 @@ public class ApiConfig {
         }
     }
 
-    public void loadLiveApi(JsonObject livesOBJ) {
+    /**
+     * 应用数据源配置并清空已加载的频道，返回 false 表示该数据源不可用（只支持 type 0/3 的直连地址）
+     */
+    public boolean applyLiveSource(JsonObject livesOBJ) {
+        liveChannelGroupList.clear();
+        if (livesOBJ == null) {
+            Hawk.put(HawkConfig.LIVE_API_URL, "");
+            return false;
+        }
         try {
-            LOG.i("echo-loadLiveApi");
             String type = livesOBJ.has("type") ? livesOBJ.get("type").getAsString() : "0";
-            String url;
-            if (type.equals("0") || type.equals("3")) {
-                url = livesOBJ.has("url") ? livesOBJ.get("url").getAsString() : "";
-                if (url.isEmpty()) url = livesOBJ.has("api") ? livesOBJ.get("api").getAsString() : "";
-                LOG.i("echo-liveurl" + url);
-            } else {
-                liveChannelGroupList.clear();
-                return;
+            if (!type.equals("0") && !type.equals("3")) {
+                LOG.i("echo-live-source unsupported type:" + type);
+                Hawk.put(HawkConfig.LIVE_API_URL, "");
+                return false;
             }
+            String url = getLiveSourceUrl(livesOBJ);
+            LOG.i("echo-live-source url:" + url);
+            // 每个数据源的频道配置分开存；内置源 url 为空，配置key与旧版本保持一致
+            Hawk.put(HawkConfig.LIVE_API_URL, url);
             //设置epg
             if (livesOBJ.has("epg")) {
-                String epg = livesOBJ.get("epg").getAsString();
-                Hawk.put(HawkConfig.EPG_URL, epg);
+                Hawk.put(HawkConfig.EPG_URL, livesOBJ.get("epg").getAsString());
             } else {
                 Hawk.put(HawkConfig.EPG_URL, "");
             }
             //直播播放器类型
             if (livesOBJ.has("playerType")) {
-                String livePlayType = livesOBJ.get("playerType").getAsString();
-                Hawk.put(HawkConfig.LIVE_PLAY_TYPE, livePlayType);
+                try {
+                    Hawk.put(HawkConfig.LIVE_PLAY_TYPE, Integer.parseInt(livesOBJ.get("playerType").getAsString().trim()));
+                } catch (NumberFormatException e) {
+                    LOG.e("echo-live-source invalid playerType:" + livesOBJ.get("playerType"));
+                }
             } else {
                 Hawk.put(HawkConfig.LIVE_PLAY_TYPE, Hawk.get(HawkConfig.PLAY_TYPE, 0));
             }
@@ -172,16 +255,13 @@ public class ApiConfig {
                 liveHeader.put("User-Agent", ua);
                 Hawk.put(HawkConfig.LIVE_WEB_HEADER, liveHeader);
             } else {
-                Hawk.put(HawkConfig.LIVE_WEB_HEADER, null);
+                Hawk.delete(HawkConfig.LIVE_WEB_HEADER);
             }
-            // 直接存储频道列表URL，不使用本地代理
-            LiveChannelGroup liveChannelGroup = new LiveChannelGroup();
-            liveChannelGroup.setGroupName(url);
-            liveChannelGroupList.clear();
-            liveChannelGroupList.add(liveChannelGroup);
         } catch (Throwable th) {
             th.printStackTrace();
+            return false;
         }
+        return true;
     }
 
     public void loadDefaultConfig() {
