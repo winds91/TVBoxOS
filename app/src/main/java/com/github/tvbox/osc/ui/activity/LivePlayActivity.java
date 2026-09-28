@@ -853,10 +853,10 @@ public class LivePlayActivity extends BaseActivity {
             } else {
                 liveChannelGroupAdapter.setSelectedGroupIndex(currentChannelGroupIndex);
                 liveChannelItemAdapter.setSelectedChannelIndex(currentLiveChannelIndex);
+                tvLeftChannelListLayout.setVisibility(View.VISIBLE);
                 RecyclerView.ViewHolder holder = mLiveChannelView.findViewHolderForAdapterPosition(currentLiveChannelIndex);
                 if (holder != null)
                     holder.itemView.requestFocus();
-                tvLeftChannelListLayout.setVisibility(View.VISIBLE);
                 ViewObj viewObj = new ViewObj(tvLeftChannelListLayout, (ViewGroup.MarginLayoutParams) tvLeftChannelListLayout.getLayoutParams());
                 ObjectAnimator animator = ObjectAnimator.ofObject(viewObj, "marginLeft", new IntEvaluator(), -tvLeftChannelListLayout.getLayoutParams().width, 0);
                 animator.setDuration(200);
@@ -930,6 +930,7 @@ public class LivePlayActivity extends BaseActivity {
             currentLiveChannelItem = getLiveChannels(currentChannelGroupIndex).get(currentLiveChannelIndex);
             Hawk.put(HawkConfig.LIVE_CHANNEL, currentLiveChannelItem.getChannelName());
             livePlayerManager.getLiveChannelPlayer(mVideoView, currentLiveChannelItem.getChannelName());
+            syncLeftChannelListSelection();
         }
 
         channel_Name = currentLiveChannelItem;
@@ -950,6 +951,24 @@ public class LivePlayActivity extends BaseActivity {
             if (liveWebHeader() != null) LOG.i("echo-" + liveWebHeader().toString());
             mVideoView.setUrl(currentLiveChannelItem.getUrl(), liveWebHeader());
             mVideoView.start();
+        }
+    }
+
+    // 换台（含播放失败自动换台）后让左侧频道列表的选中项跟上当前频道
+    private void syncLeftChannelListSelection() {
+        if (tvLeftChannelListLayout.getVisibility() != View.VISIBLE) return;
+        if (liveChannelGroupAdapter.getSelectedGroupIndex() != currentChannelGroupIndex) {
+            liveChannelGroupAdapter.setSelectedGroupIndex(currentChannelGroupIndex);
+            liveChannelItemAdapter.setNewData(getLiveChannels(currentChannelGroupIndex));
+            mChannelGroupView.scrollToPosition(currentChannelGroupIndex);
+        }
+        // 没有焦点行时（如换台时视频控件抢走焦点），旧焦点下标会让选中项不显示蓝色，这里清掉
+        if (mLiveChannelView.getFocusedChild() == null) {
+            liveChannelItemAdapter.setFocusedChannelIndex(-1);
+        }
+        liveChannelItemAdapter.setSelectedChannelIndex(currentLiveChannelIndex);
+        if (mLiveChannelView.findViewHolderForAdapterPosition(currentLiveChannelIndex) == null) {
+            mLiveChannelView.scrollToPosition(currentLiveChannelIndex);
         }
     }
 
@@ -1555,6 +1574,14 @@ public class LivePlayActivity extends BaseActivity {
             @Override
             public void onItemClick(TvRecyclerView parent, View itemView, int position) {
                 clickLiveChannel(position);
+            }
+        });
+
+        // 列表失去焦点时清掉焦点下标（TvRecyclerView 在行失焦且自身无焦点时会回调这里），
+        // 否则残留的焦点下标会让当前频道的选中项不显示蓝色
+        mLiveChannelView.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus && mLiveChannelView.getFocusedChild() == null) {
+                liveChannelItemAdapter.setFocusedChannelIndex(-1);
             }
         });
 
