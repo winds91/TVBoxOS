@@ -13,7 +13,7 @@ public class FileUtils {
     public static void cleanDirectory(File dir) {
         if (!dir.exists()) return;
         File[] files = dir.listFiles();
-        if (files == null || files.length == 0) return;
+        if (files == null) return;
         for (File one : files) {
             try {
                 deleteFile(one);

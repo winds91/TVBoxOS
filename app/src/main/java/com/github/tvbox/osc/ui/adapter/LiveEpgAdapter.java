@@ -5,6 +5,8 @@ import android.graphics.Color;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -14,6 +16,7 @@ import com.github.tvbox.osc.ui.tv.widget.AudioWaveView;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 
 public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
     private int selectedEpgIndex = -1;
@@ -22,7 +25,7 @@ public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
     private String shiyiDate = null;
     private boolean source_include_back = false;
 
-    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
+    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     public LiveEpgAdapter() {
         super(R.layout.epglist_item, new ArrayList<>());
     }
@@ -40,8 +43,8 @@ public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
         AudioWaveView wqddg_AudioWaveView = holder.getView(R.id.wqddg_AudioWaveView);
         wqddg_AudioWaveView.setVisibility(View.GONE);
         if (value.index == selectedEpgIndex && value.index != focusedEpgIndex && (value.currentEpgDate.equals(shiyiDate) || value.currentEpgDate.equals(timeFormat.format(new Date())))) {
-            textview.setTextColor(mContext.getResources().getColor(R.color.color_1890FF));
-            timeview.setTextColor(mContext.getResources().getColor(R.color.color_1890FF));
+            textview.setTextColor(ContextCompat.getColor(mContext, R.color.color_1890FF));
+            timeview.setTextColor(ContextCompat.getColor(mContext, R.color.color_1890FF));
         }else {
             textview.setTextColor(Color.WHITE);
             timeview.setTextColor(Color.WHITE);

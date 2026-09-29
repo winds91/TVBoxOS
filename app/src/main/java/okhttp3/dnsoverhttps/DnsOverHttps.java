@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import okhttp3.Cache;
 import okhttp3.CacheControl;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -92,7 +93,8 @@ public class DnsOverHttps implements Dns {
         List<InetAddress> hosts = builder.bootstrapDnsHosts;
 
         if (hosts != null) {
-            return new BootstrapDns(builder.url.host(), hosts);
+            HttpUrl url1 = builder.url;
+            return new BootstrapDns(url1 == null ? null : url1.host(), hosts);
         } else {
             return builder.systemDns;
         }
@@ -125,8 +127,9 @@ public class DnsOverHttps implements Dns {
     @NonNull
     @Override
     public List<InetAddress> lookup(@NonNull String hostname) throws UnknownHostException {
-        if (this.url == null)
+        if (this.url == null) {
             return Dns.SYSTEM.lookup(hostname);
+        }
         if (!resolvePrivateAddresses || !resolvePublicAddresses) {
             boolean privateHost = isPrivateHost(hostname);
 
@@ -218,14 +221,16 @@ public class DnsOverHttps implements Dns {
 
     private @Nullable
     Response getCacheOnlyResponse(Request request) {
-        if (!post && client.cache() != null) {
-            try {
-                Request cacheRequest = request.newBuilder().cacheControl(CacheControl.FORCE_CACHE).build();
+        if (!post) {
+            try (Cache cache = client.cache()) {
+                if (cache != null) {
+                    Request cacheRequest = request.newBuilder().cacheControl(CacheControl.FORCE_CACHE).build();
 
-                Response cacheResponse = client.newCall(cacheRequest).execute();
+                    Response cacheResponse = client.newCall(cacheRequest).execute();
 
-                if (cacheResponse.code() != 504) {
-                    return cacheResponse;
+                    if (cacheResponse.code() != 504) {
+                        return cacheResponse;
+                    }
                 }
             } catch (IOException ioe) {
                 // Failures are ignored as we can fallback to the network
@@ -247,6 +252,9 @@ public class DnsOverHttps implements Dns {
             }
 
             ResponseBody body = response.body();
+            if (body == null) {
+                return new ArrayList<>();
+            }
 
             if (body.contentLength() > MAX_RESPONSE_SIZE) {
                 throw new IOException("response size exceeds limit ("

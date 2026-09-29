@@ -158,7 +158,7 @@ public class ControlWrapper implements MediaPlayerControl, IVideoController {
         if (activity == null || activity.isFinishing())
             return;
         if (isFullScreen()) {
-            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
             stopFullScreen();
         } else {
             activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -189,7 +189,7 @@ public class ControlWrapper implements MediaPlayerControl, IVideoController {
         if (isFullScreen()) {
             stopFullScreen();
             if (width > height) {
-                activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
             }
         } else {
             startFullScreen();

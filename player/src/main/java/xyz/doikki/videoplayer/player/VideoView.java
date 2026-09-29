@@ -149,12 +149,13 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         mRenderViewFactory = config.mRenderViewFactory;
 
         //读取xml中的配置，并综合全局配置
-        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.VideoView);
-        mEnableAudioFocus = a.getBoolean(R.styleable.VideoView_enableAudioFocus, mEnableAudioFocus);
-        mIsLooping = a.getBoolean(R.styleable.VideoView_looping, false);
-        mCurrentScreenScaleType = a.getInt(R.styleable.VideoView_screenScaleType, mCurrentScreenScaleType);
-        mPlayerBackgroundColor = a.getColor(R.styleable.VideoView_playerBackgroundColor, Color.BLACK);
-        a.recycle();
+        try (TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.VideoView)) {
+            mEnableAudioFocus = a.getBoolean(R.styleable.VideoView_enableAudioFocus, mEnableAudioFocus);
+            mIsLooping = a.getBoolean(R.styleable.VideoView_looping, false);
+            mCurrentScreenScaleType = a.getInt(R.styleable.VideoView_screenScaleType, mCurrentScreenScaleType);
+            mPlayerBackgroundColor = a.getColor(R.styleable.VideoView_playerBackgroundColor, Color.BLACK);
+            a.recycle();
+        }
 
         initView();
     }

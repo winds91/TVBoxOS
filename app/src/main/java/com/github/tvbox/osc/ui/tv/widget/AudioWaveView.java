@@ -10,6 +10,9 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.view.View;
+
+import androidx.annotation.NonNull;
+
 import java.util.Random;
 
 public class AudioWaveView extends View {
@@ -19,7 +22,6 @@ public class AudioWaveView extends View {
     private RectF rectF3;
     private RectF rectF4;
     private RectF rectF5;
-    private int viewWidth;
     private int viewHeight;
     /** 每个条的宽度 */
     private int rectWidth;
@@ -27,8 +29,6 @@ public class AudioWaveView extends View {
     private int columnCount = 7;
     /** 条间距 */
     private final int space = 8;
-    /** 条随机高度 */
-    private int randomHeight;
     private Random random;
     private final Handler handler = new Handler() {
         @Override
@@ -51,10 +51,9 @@ public class AudioWaveView extends View {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
-        viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         viewHeight = MeasureSpec.getSize(heightMeasureSpec);
 
-        rectWidth = (viewWidth - space * (columnCount - 1)) / columnCount;
+        rectWidth = (MeasureSpec.getSize(widthMeasureSpec) - space * (columnCount - 1)) / columnCount;
     }
 
     private void init() {
@@ -75,13 +74,14 @@ public class AudioWaveView extends View {
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
+    protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
 
         int left = rectWidth + space;
 
         //画每个条之前高度都重新随机生成
-        randomHeight = random.nextInt(viewHeight);
+        /** 条随机高度 */
+        int randomHeight = random.nextInt(viewHeight);
         rectF1.set(left * 0, randomHeight, left * 0 + rectWidth, viewHeight);
         randomHeight = random.nextInt(viewHeight);
         rectF2.set(left * 1, randomHeight, left * 1 + rectWidth, viewHeight);

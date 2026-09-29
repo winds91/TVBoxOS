@@ -52,10 +52,12 @@ public class EpgUtil {
         try {
             if(epgHashMap.containsKey(channelName)){
                 JsonObject obj = epgHashMap.get(channelName);
-                return new String[] {
-                        obj.get("logo").getAsString(),
-                        obj.get("epgid").getAsString()
-                };
+                if (obj != null) {
+                    return new String[] {
+                            obj.get("logo").getAsString(),
+                            obj.get("epgid").getAsString()
+                    };
+                }
             }
         }catch (Exception ex) {
             ex.printStackTrace();

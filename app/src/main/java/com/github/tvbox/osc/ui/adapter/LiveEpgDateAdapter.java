@@ -3,6 +3,8 @@ package com.github.tvbox.osc.ui.adapter;
 import android.graphics.Color;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -14,7 +16,6 @@ import java.util.ArrayList;
 public class LiveEpgDateAdapter extends BaseQuickAdapter<LiveEpgDate, BaseViewHolder> {
 
     private int selectedIndex = -1;
-    private int focusedIndex = -1;
 
     public LiveEpgDateAdapter() {
         super(R.layout.item_live_channel_group, new ArrayList<>());
@@ -25,10 +26,11 @@ public class LiveEpgDateAdapter extends BaseQuickAdapter<LiveEpgDate, BaseViewHo
         TextView tvGroupName = holder.getView(R.id.tvChannelGroupName);
         tvGroupName.setText(item.getDatePresented());
         tvGroupName.setBackgroundColor(Color.TRANSPARENT);
+        int focusedIndex = -1;
         if (item.getIndex() == selectedIndex && item.getIndex() != focusedIndex) {
-            tvGroupName.setTextColor(mContext.getResources().getColor(R.color.color_1890FF));
+            tvGroupName.setTextColor(ContextCompat.getColor(mContext, R.color.color_1890FF));
         }else {
-            tvGroupName.setTextColor(mContext.getResources().getColor(R.color.color_CCFFFFFF));
+            tvGroupName.setTextColor(ContextCompat.getColor(mContext, R.color.color_CCFFFFFF));
         }
     }
 

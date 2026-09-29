@@ -23,15 +23,14 @@ import javax.net.ssl.X509TrustManager;
  * @since 2021/1/10
  */
 public class SSLSocketFactoryCompat extends SSLSocketFactory {
-    private SSLSocketFactory defaultFactory;
+    private final SSLSocketFactory defaultFactory;
     // Android 5.0+ (API level21) provides reasonable default settings
     // but it still allows SSLv3
     // https://developer.android.com/about/versions/android-5.0-changes.html#ssl
-    static String protocols[] = null, cipherSuites[] = null;
+    static String[] protocols = null, cipherSuites = null;
 
     static {
-        try {
-            SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+        try (SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket()){
             if (socket != null) {
                 /* set reasonable protocol versions */
                 // - enable all supported protocols (enables TLSv1.1 and TLSv1.2 on Android <5.0)
@@ -40,7 +39,7 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
                 for (String protocol : socket.getSupportedProtocols())
                     if (!protocol.toUpperCase().contains("SSL"))
                         protocols.add(protocol);
-                SSLSocketFactoryCompat.protocols = protocols.toArray(new String[protocols.size()]);
+                SSLSocketFactoryCompat.protocols = protocols.toArray(new String[0]);
                 /* set up reasonable cipher suites */
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                     // choose known secure cipher suites
@@ -71,9 +70,8 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
                      * the security level of DAVdroid and maximum compatibility, disabling of insecure
                      * ciphers should be a server-side task */
                     // add preferred ciphers to enabled ciphers
-                    HashSet<String> enabledCiphers = preferredCiphers;
-                    enabledCiphers.addAll(new HashSet<>(Arrays.asList(socket.getEnabledCipherSuites())));
-                    SSLSocketFactoryCompat.cipherSuites = enabledCiphers.toArray(new String[enabledCiphers.size()]);
+                    preferredCiphers.addAll(new HashSet<>(Arrays.asList(socket.getEnabledCipherSuites())));
+                    SSLSocketFactoryCompat.cipherSuites = preferredCiphers.toArray(new String[0]);
                 }
             }
         } catch (IOException e) {

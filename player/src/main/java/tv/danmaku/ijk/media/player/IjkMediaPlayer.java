@@ -42,6 +42,8 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
+import androidx.annotation.NonNull;
+
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -173,7 +175,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * Default library loader
      * Load them by yourself, if your libraries are not installed at default place.
      */
-    private static final IjkLibLoader sLocalLibLoader = libName -> System.loadLibrary(libName);
+    private static final IjkLibLoader sLocalLibLoader = System::loadLibrary;
 
     private static volatile boolean mIsLibLoaded = false;
 
@@ -452,7 +454,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR1) {
             int native_fd = -1;
             try {
-                Field f = fd.getClass().getDeclaredField("descriptor"); //NoSuchFieldException
+                @SuppressLint("DiscouragedPrivateApi") Field f = fd.getClass().getDeclaredField("descriptor"); //NoSuchFieldException
                 f.setAccessible(true);
                 native_fd = f.getInt(fd); //IllegalAccessException
             } catch (NoSuchFieldException e) {
@@ -871,7 +873,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             if (nodes.length >= 2) {
                 mediaInfo.mVideoDecoder = nodes[0];
                 mediaInfo.mVideoDecoderImpl = nodes[1];
-            } else if (nodes.length >= 1) {
+            } else if (nodes.length == 1) {
                 mediaInfo.mVideoDecoder = nodes[0];
                 mediaInfo.mVideoDecoderImpl = "";
             }
@@ -883,7 +885,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             if (nodes.length >= 2) {
                 mediaInfo.mAudioDecoder = nodes[0];
                 mediaInfo.mAudioDecoderImpl = nodes[1];
-            } else if (nodes.length >= 1) {
+            } else if (nodes.length == 1) {
                 mediaInfo.mAudioDecoder = nodes[0];
                 mediaInfo.mAudioDecoderImpl = "";
             }
@@ -963,7 +965,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     public void setCacheShare(int share) {
-        _setPropertyLong(FFP_PROP_INT64_SHARE_CACHE_DATA, (long) share);
+        _setPropertyLong(FFP_PROP_INT64_SHARE_CACHE_DATA, share);
     }
 
     private static class EventHandler extends Handler {
@@ -975,7 +977,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
 
         @Override
-        public void handleMessage(Message msg) {
+        public void handleMessage(@NonNull Message msg) {
             IjkMediaPlayer player = mWeakPlayer.get();
             if (player == null || player.mNativeMediaPlayer == 0) {
                 DebugLog.w(TAG,
@@ -1170,7 +1172,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     @CalledByNative
     private static boolean onNativeInvoke(Object weakThiz, int what, Bundle args) {
         DebugLog.ifmt(TAG, "onNativeInvoke %d", what);
-        if (weakThiz == null || !(weakThiz instanceof WeakReference<?>))
+        if (!(weakThiz instanceof WeakReference<?>))
             throw new IllegalStateException("<null weakThiz>.onNativeInvoke()");
 
         @SuppressWarnings("unchecked")
@@ -1183,26 +1185,23 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         if (listener != null && listener.onNativeInvoke(what, args))
             return true;
 
-        switch (what) {
-            case OnNativeInvokeListener.CTRL_WILL_CONCAT_RESOLVE_SEGMENT: {
-                OnControlMessageListener onControlMessageListener = player.mOnControlMessageListener;
-                if (onControlMessageListener == null)
-                    return false;
-
-                int segmentIndex = args.getInt(OnNativeInvokeListener.ARG_SEGMENT_INDEX, -1);
-                if (segmentIndex < 0)
-                    throw new InvalidParameterException("onNativeInvoke(invalid segment index)");
-
-                String newUrl = onControlMessageListener.onControlResolveSegmentUrl(segmentIndex);
-                if (newUrl == null)
-                    throw new RuntimeException(new IOException("onNativeInvoke() = <NULL newUrl>"));
-
-                args.putString(OnNativeInvokeListener.ARG_URL, newUrl);
-                return true;
-            }
-            default:
+        if (what == OnNativeInvokeListener.CTRL_WILL_CONCAT_RESOLVE_SEGMENT) {
+            OnControlMessageListener onControlMessageListener = player.mOnControlMessageListener;
+            if (onControlMessageListener == null)
                 return false;
+
+            int segmentIndex = args.getInt(OnNativeInvokeListener.ARG_SEGMENT_INDEX, -1);
+            if (segmentIndex < 0)
+                throw new InvalidParameterException("onNativeInvoke(invalid segment index)");
+
+            String newUrl = onControlMessageListener.onControlResolveSegmentUrl(segmentIndex);
+            if (newUrl == null)
+                throw new RuntimeException(new IOException("onNativeInvoke() = <NULL newUrl>"));
+
+            args.putString(OnNativeInvokeListener.ARG_URL, newUrl);
+            return true;
         }
+        return false;
     }
 
     /*
@@ -1226,7 +1225,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     @CalledByNative
     private static String onSelectCodec(Object weakThiz, String mimeType, int profile, int level) {
-        if (weakThiz == null || !(weakThiz instanceof WeakReference<?>))
+        if (!(weakThiz instanceof WeakReference<?>))
             return null;
 
         @SuppressWarnings("unchecked")

@@ -85,6 +85,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
@@ -100,7 +101,7 @@ import xyz.doikki.videoplayer.player.VideoView;
  */
 public class LivePlayActivity extends BaseActivity {
     public static Context context;
-    private VideoView<xyz.doikki.videoplayer.player.AbstractPlayer> mVideoView;
+    private VideoView mVideoView;
     private TextView tvTime;
     private TextView tvNetSpeed;
     private LinearLayout tvLeftChannelListLayout;
@@ -119,7 +120,7 @@ public class LivePlayActivity extends BaseActivity {
     public static int currentChannelGroupIndex = 0;
     private final Handler mHandler = new Handler();
 
-    private List<LiveChannelGroup> liveChannelGroupList = new ArrayList<>();
+    private final List<LiveChannelGroup> liveChannelGroupList = new ArrayList<>();
     private int currentLiveChannelIndex = -1;
     private int currentLiveLookBackIndex = -1;
     private int currentLiveChangeSourceTimes = 0;
@@ -129,7 +130,7 @@ public class LivePlayActivity extends BaseActivity {
 
     //EPG   by 龍
     private static LiveChannelItem channel_Name = null;
-    private static Hashtable<String, ArrayList<Epginfo>> hsEpg = new Hashtable<>();
+    private static final Hashtable<String, ArrayList<Epginfo>> hsEpg = new Hashtable<>();
     private CountDownTimer countDownTimer;
     //    private CountDownTimer countDownTimerRightTop;
     private View ll_right_top_loading;
@@ -147,8 +148,6 @@ public class LivePlayActivity extends BaseActivity {
     TextView tv_nextepg_left;
     private TextView tv_right_top_channel_name;
     private TextView tv_right_top_epg_name;
-    private ImageView iv_circle_bg;
-    private ObjectAnimator objectAnimator;
     public String epgStringAddress = "";
 
     private TvRecyclerView mEpgDateGridView;
@@ -156,12 +155,9 @@ public class LivePlayActivity extends BaseActivity {
     private LiveEpgDateAdapter liveEpgDateAdapter;
     private LiveEpgAdapter epgListAdapter;
 
-    private final List<LiveDayListGroup> liveDayList = new ArrayList<>();
-
-
     //laodao 7day replay
-    public static SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd");
-    public static SimpleDateFormat formatDate1 = new SimpleDateFormat("MM-dd");
+    public static SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    public static SimpleDateFormat formatDate1 = new SimpleDateFormat("MM-dd", Locale.getDefault());
     public static String day = formatDate.format(new Date());
     public static Date nowday = new Date();
 
@@ -175,7 +171,7 @@ public class LivePlayActivity extends BaseActivity {
     private ImageView imgLiveIcon;
     private FrameLayout liveIconNullBg;
     private TextView liveIconNullText;
-    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
+    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private View backcontroller;
     private CountDownTimer countDownTimer3;
     private final int videoHeight = 1080;
@@ -184,7 +180,6 @@ public class LivePlayActivity extends BaseActivity {
     private SeekBar sBar;
     private View iv_playpause;
     private View iv_play;
-    private boolean show = false;
     private static final int postTimeout = 6000;
 
     // 遥控器数字键输入的要切换的频道号码
@@ -201,9 +196,9 @@ public class LivePlayActivity extends BaseActivity {
     protected void init() {
         context = this;
         epgStringAddress = Hawk.get(HawkConfig.EPG_URL, "");
-        if (epgStringAddress.length() < 5)
+        if (epgStringAddress.length() < 5) {
             epgStringAddress = "http://epg.51zmt.top:8000/api/diyp/";
-
+        }
         setLoadSir(findViewById(R.id.live_root));
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -253,14 +248,14 @@ public class LivePlayActivity extends BaseActivity {
         tv_right_top_channel_name = findViewById(R.id.tv_right_top_channel_name);
         tv_right_top_epg_name = findViewById(R.id.tv_right_top_epg_name);
 //        tv_right_top_type = (TextView)findViewById(R.id.tv_right_top_type);
-        iv_circle_bg = findViewById(R.id.iv_circle_bg);
+        ImageView iv_circle_bg = findViewById(R.id.iv_circle_bg);
         ll_right_top_loading = findViewById(R.id.ll_right_top_loading);
         ll_right_top_huikan = findViewById(R.id.ll_right_top_huikan);
         divLoadEpg = findViewById(R.id.divLoadEpg);
         divLoadEpgleft = findViewById(R.id.divLoadEpgleft);
         divEpg = findViewById(R.id.divEPG);
         //右上角图片旋转
-        objectAnimator = ObjectAnimator.ofFloat(iv_circle_bg, "rotation", 360.0f);
+        ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(iv_circle_bg, "rotation", 360.0f);
         objectAnimator.setDuration(postTimeout);
         objectAnimator.setRepeatCount(-1);
         objectAnimator.start();
@@ -289,14 +284,8 @@ public class LivePlayActivity extends BaseActivity {
 
         tvSelectedChannel = findViewById(R.id.tv_selected_channel);
 
-        if (show) {
-            backcontroller.setVisibility(View.VISIBLE);
-            ll_epg.setVisibility(View.GONE);
-
-        } else {
-            backcontroller.setVisibility(View.GONE);
-            ll_epg.setVisibility(View.VISIBLE);
-        }
+        backcontroller.setVisibility(View.GONE);
+        ll_epg.setVisibility(View.VISIBLE);
 
 
         iv_play.setOnClickListener(arg0 -> {
@@ -397,25 +386,22 @@ public class LivePlayActivity extends BaseActivity {
         Hawk.put(HawkConfig.PLAYER_IS_LIVE, true);
     }
 
-    //获取EPG并存储 // 百川epg  DIYP epg   51zmt epg ------- 自建EPG格式输出格式请参考 51zmt
-    private List<Epginfo> epgdata = new ArrayList<>();
-
     private void showEpg(Date date, ArrayList<Epginfo> arrayList) {
-        if (arrayList != null && arrayList.size() > 0) {
-            epgdata = arrayList;
+        if (arrayList != null && !arrayList.isEmpty()) {
+            //获取EPG并存储 // 百川epg  DIYP epg   51zmt epg ------- 自建EPG格式输出格式请参考 51zmt
             epgListAdapter.CanBack(currentLiveChannelItem.getinclude_back());
-            epgListAdapter.setNewData(epgdata);
+            epgListAdapter.setNewData(arrayList);
 
             int i;
-            int size = epgdata.size() - 1;
+            int size = arrayList.size() - 1;
             while (size >= 0) {
-                if (new Date().compareTo(epgdata.get(size).startdateTime) >= 0) {
+                if (new Date().compareTo(arrayList.get(size).startdateTime) >= 0) {
                     break;
                 }
                 size--;
             }
             i = size;
-            if (i >= 0 && new Date().compareTo(epgdata.get(i).enddateTime) <= 0) {
+            if (i >= 0 && new Date().compareTo(arrayList.get(i).enddateTime) <= 0) {
                 mRightEpgList.setSelectedPosition(i);
                 mRightEpgList.setSelection(i);
                 epgListAdapter.setSelectedEpgIndex(i);
@@ -468,7 +454,7 @@ public class LivePlayActivity extends BaseActivity {
             showBottomEpg();
             return;
         }
-        UrlHttpUtil.get(url, new CallBackUtil.CallBackString() {
+        UrlHttpUtil.get(url, new CallBackUtil<>.CallBackString() {
             public void onFailure(int i, String str) {
 //                showEpg(date, new ArrayList<>());
 //                showBottomEpg();
@@ -517,7 +503,7 @@ public class LivePlayActivity extends BaseActivity {
 
             if (hsEpg.containsKey(savedEpgKey)) {
                 ArrayList<Epginfo> arrayList = hsEpg.get(savedEpgKey);
-                if (arrayList != null && arrayList.size() > 0) {
+                if (arrayList != null && !arrayList.isEmpty()) {
                     Date date = new Date();
                     int size = arrayList.size() - 1;
                     boolean hasInfo = false;
@@ -1112,7 +1098,7 @@ public class LivePlayActivity extends BaseActivity {
                 currentLiveLookBackIndex = position;
                 Date date = liveEpgDateAdapter.getSelectedIndex() < 0 ? new Date() :
                         liveEpgDateAdapter.getData().get(liveEpgDateAdapter.getSelectedIndex()).getDateParamVal();
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.CHINA);
                 dateFormat.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
                 Epginfo selectedData = epgListAdapter.getItem(position);
                 String targetDate = dateFormat.format(date);
@@ -1321,7 +1307,6 @@ public class LivePlayActivity extends BaseActivity {
 
     //laoda 生成7天回放日期列表数据
     private void initDayList() {
-        liveDayList.clear();
 //        Date firstday = new Date(nowday.getTime() - 2 * 24 * 60 * 60 * 1000);
 //        for (int i = 0; i < 1; i++) {
 //            LiveDayListGroup daylist = new LiveDayListGroup();
@@ -1339,7 +1324,6 @@ public class LivePlayActivity extends BaseActivity {
         LOG.i("echo-date" + day);
         daylist.setGroupIndex(0);
         daylist.setGroupName(day);
-        liveDayList.add(daylist);
     }
 
     //kens 7天回放数据绑定和展示
@@ -1955,7 +1939,9 @@ public class LivePlayActivity extends BaseActivity {
     private final Runnable mUpdateNetSpeedRun = new Runnable() {
         @Override
         public void run() {
-            if (mVideoView == null) return;
+            if (mVideoView == null) {
+                return;
+            }
             String speed = PlayerHelper.getDisplaySpeed(mVideoView.getTcpSpeed(), true);
             tvNetSpeed.setText(speed);
 //            tv_right_top_tipnetspeed.setText(speed);
@@ -2089,7 +2075,7 @@ public class LivePlayActivity extends BaseActivity {
 
     //计算两个时间相差的秒数
     public static long getTime(String startTime, String endTime) {
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
         long eTime = 0;
         try {
             eTime = df.parse(endTime).getTime();

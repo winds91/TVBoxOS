@@ -32,9 +32,15 @@ public class TxtSubscribe {
             LinkedHashMap<String, ArrayList<String>> channelTemp;
             String line;
             while ((line = bufferedReader.readLine()) != null) {
-                if (line.equals("")) continue;
-                if (line.startsWith("#EXTM3U")) continue;
-                if (isSetting(line)) continue;
+                if (line.isEmpty()) {
+                    continue;
+                }
+                if (line.startsWith("#EXTM3U")) {
+                    continue;
+                }
+                if (isSetting(line)) {
+                    continue;
+                }
                 if (line.startsWith("#EXTINF") || line.contains("#EXTINF")) {
                     String name = getStrByRegex(NAME_PATTERN, line);
                     String group = getStrByRegex(GROUP_PATTERN, line);
@@ -50,9 +56,13 @@ public class TxtSubscribe {
                             urls = channelTemp.get(name);
                         } else {
                             urls = new ArrayList<>();
-                            channelTemp.put(name, urls);
+                            if (channelTemp != null) {
+                                channelTemp.put(name, urls);
+                            }
                         }
-                        if (null != urls && !urls.contains(url)) urls.add(url);
+                        if (null != urls && !urls.contains(url)) {
+                            urls.add(url);
+                        }
                     }
                 }
             }
@@ -65,7 +75,9 @@ public class TxtSubscribe {
     }
     private static String getStrByRegex(Pattern pattern, String line) {
         Matcher matcher = pattern.matcher(line);
-        if (matcher.find()) return matcher.group(1);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
         return pattern.pattern().equals(GROUP_PATTERN.pattern()) ? "未分组" : "未命名";
     }
 
@@ -106,14 +118,18 @@ public class TxtSubscribe {
                             for (String str2 : split[1].trim().split("#")) {
                                 String trim3 = str2.trim();
                                 if (isUrl(trim3)) {
-                                    if (!linkedHashMap3.containsKey(trim2)) {
-                                        arrayList = new ArrayList<>();
-                                        linkedHashMap3.put(trim2, arrayList);
-                                    } else {
-                                        arrayList = linkedHashMap3.get(trim2);
-                                    }
-                                    if (!arrayList.contains(trim3)) {
-                                        arrayList.add(trim3);
+                                    if (linkedHashMap3 != null) {
+                                        if (!linkedHashMap3.containsKey(trim2)) {
+                                            arrayList = new ArrayList<>();
+                                            linkedHashMap3.put(trim2, arrayList);
+                                        } else {
+                                            arrayList = linkedHashMap3.get(trim2);
+                                        }
+                                        if (arrayList != null) {
+                                            if (!arrayList.contains(trim3)) {
+                                                arrayList.add(trim3);
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -136,10 +152,10 @@ public class TxtSubscribe {
         for (String str : linkedHashMap.keySet()) {
             JsonArray jsonarr2 = new JsonArray();
             LinkedHashMap<String, ArrayList<String>> linkedHashMap2 = linkedHashMap.get(str);
-            if (!linkedHashMap2.isEmpty()) {
+            if (linkedHashMap2 != null && !linkedHashMap2.isEmpty()) {
                 for (String str2 : linkedHashMap2.keySet()) {
                     ArrayList<String> arrayList = linkedHashMap2.get(str2);
-                    if (!arrayList.isEmpty()) {
+                    if (arrayList != null && !arrayList.isEmpty()) {
                         JsonArray jsonarr3 = new JsonArray();
                         for (int i = 0; i < arrayList.size(); i++) {
                             jsonarr3.add(arrayList.get(i));

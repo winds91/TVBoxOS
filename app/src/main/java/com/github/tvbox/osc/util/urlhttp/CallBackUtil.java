@@ -68,12 +68,12 @@ public abstract class CallBackUtil<T> {
 
     private static String getRetString(InputStream is) {
         String buf;
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf-8"));
+        try (InputStreamReader isr = new InputStreamReader(is, "utf-8");
+             BufferedReader reader = new BufferedReader(isr)) {
             StringBuilder sb = new StringBuilder();
-            String line = "";
+            String line;
             while ((line = reader.readLine()) != null) {
-                sb.append(line + "\n");
+                sb.append(line).append("\n");
             }
             is.close();
             buf = sb.toString();

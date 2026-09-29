@@ -49,20 +49,21 @@ class DnsRecordCodec {
     buf.writeShort(0); // authorityResourceCount
     buf.writeShort(0); // additional
 
-    Buffer nameBuf = new Buffer();
-    final String[] labels = host.split("\\.");
-    for (String label : labels) {
-      long utf8ByteCount = Utf8.size(label);
-      if (utf8ByteCount != label.length()) {
-        throw new IllegalArgumentException("non-ascii hostname: " + host);
-      }
-      nameBuf.writeByte((byte) utf8ByteCount);
-      nameBuf.writeUtf8(label);
-    }
-    nameBuf.writeByte(0); // end
+      try (Buffer nameBuf = new Buffer()) {
+          final String[] labels = host.split("\\.");
+          for (String label : labels) {
+              long utf8ByteCount = Utf8.size(label);
+              if (utf8ByteCount != label.length()) {
+                  throw new IllegalArgumentException("non-ascii hostname: " + host);
+              }
+              nameBuf.writeByte((byte) utf8ByteCount);
+              nameBuf.writeUtf8(label);
+          }
+          nameBuf.writeByte(0); // end
 
-    nameBuf.copyTo(buf, 0, nameBuf.size());
-    buf.writeShort(type);
+          nameBuf.copyTo(buf, 0, nameBuf.size());
+      }
+      buf.writeShort(type);
     buf.writeShort(1); // CLASS_IN
 
     return buf.readByteString();

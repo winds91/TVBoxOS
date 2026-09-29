@@ -144,20 +144,21 @@ import java.util.Map;
      * 上传文件时得到拼接的参数字符串
      */
     private String getParamsString(Map<String, String> paramsMap) {
-        StringBuffer strBuf = new StringBuffer();
-        for (String key : paramsMap.keySet()){
+        StringBuilder strBuf = new StringBuilder();
+        for (String key : paramsMap.keySet()) {
             strBuf.append(TWO_HYPHENS);
             strBuf.append(BOUNDARY);
             strBuf.append(LINE_END);
             strBuf.append("Content-Disposition: form-data; name=\"").append(key).append("\"");
             strBuf.append(LINE_END);
 
-            strBuf.append("Content-Type: " + "text/plain" );
+            strBuf.append("Content-Type: " + "text/plain");
             strBuf.append(LINE_END);
-            strBuf.append("Content-Lenght: ").append(paramsMap.get(key).length());
+            String value = paramsMap.get(key);
+            strBuf.append("Content-Lenght: ").append(value == null ? 0 : value.length());
             strBuf.append(LINE_END);
             strBuf.append(LINE_END);
-            strBuf.append(paramsMap.get(key));
+            strBuf.append(value);
             strBuf.append(LINE_END);
         }
         return strBuf.toString();

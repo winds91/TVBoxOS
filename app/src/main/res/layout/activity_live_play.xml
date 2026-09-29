@@ -5,7 +5,8 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+	tools:ignore="RtlSymmetry,InOrMmUsage,ContentDescription,RtlHardcoded,UsingOnClickInXml,HardcodedText,UselessParent" >
 
     <xyz.doikki.videoplayer.player.VideoView
         android:id="@+id/mVideoView"
@@ -99,12 +100,11 @@
 					android:id="@+id/iv_arrow2"
 					android:layout_width="20dp"
 					android:layout_height="20dp"
-					android:gravity="center|left"
+                    android:gravity="center|left"
 					android:onClick="divLoadEpgLeft"
 					android:paddingLeft="-5dp"
 					android:paddingTop="5dp"
-					android:src="@drawable/scrollviewleft"
-					tools:ignore="RtlHardcoded,RtlSymmetry,UsingOnClickInXml" />
+					android:src="@drawable/scrollviewleft" />
 
 				<TextView
 					android:id="@+id/tv_arrow3"
@@ -173,7 +173,8 @@
 					android:layout_height="20dp"
 					android:layout_gravity="center"
 					android:layout_marginLeft="1dp"
-					android:gravity="center|left"
+                    android:layout_marginStart="1dp"
+                    android:gravity="center|left"
 					android:onClick="divLoadEpgRight"
 					android:paddingTop="5dp"
 					android:src="@drawable/scrollview" />
@@ -233,7 +234,8 @@
 					android:layout_marginTop="50px"
 					android:gravity="center"
 					android:paddingLeft="5dp"
-					android:text="暂无节目信息…"
+                    android:paddingStart="5dp"
+                    android:text="暂无节目信息…"
 					android:textColor="@color/color_FF0057"
 					android:visibility="gone" />
 			</LinearLayout>

@@ -90,7 +90,9 @@ public class IjkMediaPlayer extends IjkPlayer {
                     if (Hawk.get(HawkConfig.IJK_CACHE_PLAY, false)) {
                         String cachePath = FileUtils.getCachePath() + "/ijkcaches/";
                         File cacheFile = new File(cachePath);
-                        if (!cacheFile.exists()) cacheFile.mkdirs();
+                        if (!cacheFile.exists()) {
+                            cacheFile.mkdirs();
+                        }
                         String tmpMd5 = MD5.string2MD5(path);
                         String cacheFilePath = cachePath + tmpMd5 + ".file";
                         String cacheMapPath = cachePath + tmpMd5 + ".map";

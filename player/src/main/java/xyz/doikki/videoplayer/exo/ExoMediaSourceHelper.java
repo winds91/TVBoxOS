@@ -32,7 +32,7 @@ import okhttp3.OkHttpClient;
 
 public final class ExoMediaSourceHelper {
 
-    private static ExoMediaSourceHelper sInstance;
+    private static volatile ExoMediaSourceHelper sInstance;
 
     private final String mUserAgent;
     private final Context mAppContext;
@@ -152,7 +152,7 @@ public final class ExoMediaSourceHelper {
      */
     private DataSource.Factory getHttpDataSourceFactory() {
         if (mHttpDataSourceFactory == null) {
-            mHttpDataSourceFactory = new OkHttpDataSource.Factory((Call.Factory) mOkClient)
+            mHttpDataSourceFactory = new OkHttpDataSource.Factory(mOkClient)
                     .setUserAgent(mUserAgent)/*
                     .setAllowCrossProtocolRedirects(true)*/;
         }
@@ -160,7 +160,7 @@ public final class ExoMediaSourceHelper {
     }
 
     private void setHeaders(Map<String, String> headers) {
-        if (headers != null && headers.size() > 0) {
+        if (headers != null && !headers.isEmpty()) {
             //如果发现用户通过header传递了UA，则强行将HttpDataSourceFactory里面的userAgent字段替换成用户的
             if (headers.containsKey("User-Agent")) {
                 String value = headers.remove("User-Agent");
@@ -174,9 +174,7 @@ public final class ExoMediaSourceHelper {
                     }
                 }
             }
-            Iterator<String> iter = headers.keySet().iterator();
-            while (iter.hasNext()) {
-                String k = iter.next();
+            for (String k : headers.keySet()) {
                 String v = headers.get(k);
                 if (v != null)
                     headers.put(k, v.trim());

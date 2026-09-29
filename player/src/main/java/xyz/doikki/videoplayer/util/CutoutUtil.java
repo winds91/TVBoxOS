@@ -38,7 +38,7 @@ public final class CutoutUtil {
                 return false;
             }
             List<Rect> boundingRects = displayCutout.getBoundingRects();
-            return boundingRects.size() > 0;
+            return !boundingRects.isEmpty();
         } else {
             return hasCutoutHuawei(activity)
                     || hasCutoutOPPO(activity)
@@ -57,7 +57,7 @@ public final class CutoutUtil {
         }
         try {
             ClassLoader cl = activity.getClassLoader();
-            Class HwNotchSizeUtil = cl.loadClass("com.huawei.android.util.HwNotchSizeUtil");
+            Class<?> HwNotchSizeUtil = cl.loadClass("com.huawei.android.util.HwNotchSizeUtil");
             if (HwNotchSizeUtil != null) {
                 Method get = HwNotchSizeUtil.getMethod("hasNotchInScreen");
                 return (boolean) get.invoke(HwNotchSizeUtil);
@@ -89,7 +89,7 @@ public final class CutoutUtil {
         }
         try {
             ClassLoader cl = activity.getClassLoader();
-            Class ftFeatureUtil = cl.loadClass("android.util.FtFeature");
+            Class<?> ftFeatureUtil = cl.loadClass("android.util.FtFeature");
             if (ftFeatureUtil != null) {
                 Method get = ftFeatureUtil.getMethod("isFeatureSupport", int.class);
                 return (boolean) get.invoke(ftFeatureUtil, 0x00000020);
@@ -111,8 +111,8 @@ public final class CutoutUtil {
         }
         try {
             ClassLoader cl = activity.getClassLoader();
-            Class SystemProperties = cl.loadClass("android.os.SystemProperties");
-            Class[] paramTypes = new Class[2];
+            Class<?> SystemProperties = cl.loadClass("android.os.SystemProperties");
+            Class<?>[] paramTypes = new Class[2];
             paramTypes[0] = String.class;
             paramTypes[1] = int.class;
             Method getInt = SystemProperties.getMethod("getInt", paramTypes);
@@ -150,13 +150,16 @@ public final class CutoutUtil {
      */
     public static void adaptCutoutAboveAndroidP(Dialog dialog, boolean isAdapt) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
-            if (isAdapt) {
-                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-            } else {
-                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            Window window = dialog.getWindow();
+            if (window != null) {
+                WindowManager.LayoutParams lp = window.getAttributes();
+                if (isAdapt) {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                } else {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+                }
+                window.setAttributes(lp);
             }
-            dialog.getWindow().setAttributes(lp);
         }
     }
 }

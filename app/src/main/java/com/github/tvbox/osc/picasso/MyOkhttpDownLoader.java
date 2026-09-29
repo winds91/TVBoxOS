@@ -27,7 +27,6 @@ import com.squareup.picasso.Downloader;
 import java.io.IOException;
 import java.net.URLDecoder;
 
-import okhttp3.Cache;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -39,8 +38,6 @@ import okhttp3.Response;
 public final class MyOkhttpDownLoader implements Downloader {
     @VisibleForTesting
     final Call.Factory client;
-    private final Cache cache;
-    private final boolean sharedClient = true;
 
     /**
      * Create a new downloader that uses the specified OkHttp instance. A response cache will not be
@@ -48,7 +45,6 @@ public final class MyOkhttpDownLoader implements Downloader {
      */
     public MyOkhttpDownLoader(OkHttpClient client) {
         this.client = client;
-        this.cache = client.cache();
     }
 
     @NonNull
@@ -99,11 +95,5 @@ public final class MyOkhttpDownLoader implements Downloader {
     }
     @Override
     public void shutdown() {
-        if (!sharedClient && cache != null) {
-            try {
-                cache.close();
-            } catch (IOException ignored) {
-            }
-        }
     }
 }

@@ -53,7 +53,7 @@ public class ApiConfig {
     // 后续切换数据源时往 LIVE_GROUP_LIST 里写入 {"name":..,"type":..,"url":..} 即可
     private void initLiveSources() {
         JsonArray liveSources = Hawk.get(HawkConfig.LIVE_GROUP_LIST, new JsonArray());
-        if (liveSources == null || liveSources.size() == 0) {
+        if (liveSources == null || liveSources.isEmpty()) {
             JsonObject builtInSource = new JsonObject();
             builtInSource.addProperty("name", "内置源");
             builtInSource.addProperty("type", "0");
@@ -75,7 +75,9 @@ public class ApiConfig {
 
     // 写入数据源列表（接入别的数据源时调用），选中下标越界会自动回到第 1 个源
     public void setLiveSources(JsonArray liveSources) {
-        if (liveSources == null || liveSources.size() == 0) return;
+        if (liveSources == null || liveSources.isEmpty()) {
+            return;
+        }
         Hawk.put(HawkConfig.LIVE_GROUP_LIST, liveSources);
         getLiveGroupIndex();
     }
@@ -294,7 +296,7 @@ public class ApiConfig {
                 }
                 ijkCodes.add(codec);
             }
-            if (!foundOldSelect && ijkCodes.size() > 0) {
+            if (!foundOldSelect && !ijkCodes.isEmpty()) {
                 ijkCodes.get(0).selected(true);
             }
         }

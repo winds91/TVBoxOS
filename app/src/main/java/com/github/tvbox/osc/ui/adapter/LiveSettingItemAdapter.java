@@ -3,6 +3,8 @@ package com.github.tvbox.osc.ui.adapter;
 import android.graphics.Color;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -29,7 +31,7 @@ public class LiveSettingItemAdapter extends BaseQuickAdapter<LiveSettingItem, Ba
         tvItemName.setText(item.getItemName());
         int itemIndex = item.getItemIndex();
         if (item.isItemSelected() && itemIndex != focusedItemIndex) {
-            tvItemName.setTextColor(mContext.getResources().getColor(R.color.color_1890FF));
+            tvItemName.setTextColor(ContextCompat.getColor(mContext, R.color.color_1890FF));
         } else {
             tvItemName.setTextColor(Color.WHITE);
         }
@@ -52,16 +54,19 @@ public class LiveSettingItemAdapter extends BaseQuickAdapter<LiveSettingItem, Ba
     public void setFocusedItemIndex(int focusedItemIndex) {
         int preFocusItemIndex = this.focusedItemIndex;
         this.focusedItemIndex = focusedItemIndex;
-        if (preFocusItemIndex != -1)
+        if (preFocusItemIndex != -1) {
             notifyItemChanged(preFocusItemIndex);
-        if (this.focusedItemIndex != -1)
+        }
+        if (this.focusedItemIndex != -1) {
             notifyItemChanged(this.focusedItemIndex);
+        }
     }
 
     public int getSelectedItemIndex() {
         for (LiveSettingItem item : getData()) {
-            if (item.isItemSelected())
+            if (item.isItemSelected()) {
                 return item.getItemIndex();
+            }
         }
         return -1;
     }

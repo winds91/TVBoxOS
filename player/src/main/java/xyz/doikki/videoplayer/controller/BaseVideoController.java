@@ -417,8 +417,10 @@ public abstract class BaseVideoController extends FrameLayout
      * @return 是否成功退出全屏
      */
     protected boolean stopFullScreen() {
-        if (mActivity == null || mActivity.isFinishing()) return false;
-        mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        if (mActivity == null || mActivity.isFinishing()) {
+            return false;
+        }
+        mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         mControlWrapper.stopFullScreen();
         return true;
     }
@@ -509,7 +511,7 @@ public abstract class BaseVideoController extends FrameLayout
         //没有开启设备方向监听的情况
         if (!mEnableOrientation) return;
 
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         mControlWrapper.stopFullScreen();
     }
 
